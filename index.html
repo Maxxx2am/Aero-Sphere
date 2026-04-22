@@ -241,12 +241,14 @@
             <p>• <b>Player 1:</b> WASD to Move | R to Boost | T to Jump</p>
             <p>• <b>Player 2:</b> Arrows to Move | , to Boost | . to Jump</p>
             <p><b>PRO MOVES:</b><br>• <b>Directional Jump:</b> Launch where you aim!<br>• <b>Flip Reset:</b> Hit the ball with your engine (back) for a jump/boost reset!<br>• <b>Air Strafe:</b> nudge yourself left/right while in the air.</p>
-            <p><b>LEADERBOARD:</b> Keep the ball in the air! Survive without touching walls/floor. Surpass the top record to earn the <b>Gold Trophy</b>!</p>
+            <p><b>LEADERBOARD:</b> Keep the ball in the air! Survive without touching walls/floor. Surpass the top record to earn the <b>Gold Trophy</b>! <br><i style="color: #ff4444; font-size: 11px;">Note: Timer is disabled if physics settings are changed.</i></p>
             <p style="text-align: center; margin-top: 30px; font-weight: bold; color: #fff;">Made by Maxxx</p>
         </div>
         <button id="close-how-to" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: #555; font-size: 20px; cursor: pointer;">×</button>
     </div>
 </div>
+
+<div id="settings-warning" style="position: absolute; top: 160px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #ff4444; display: none; font-weight: bold; letter-spacing: 1px; z-index: 4;">CUSTOM PHYSICS: TIMER DISABLED</div>
 
 <canvas id="gameCanvas"></canvas>
 
@@ -254,12 +256,14 @@
 const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
 const scoreBlueEl = document.getElementById('score-blue'), scoreOrangeEl = document.getElementById('score-orange'), goalMsgEl = document.getElementById('goal-msg');
 const timerEl = document.getElementById('dribble-timer'), timerContainer = document.getElementById('dribble-timer-container'), timerTrophy = document.getElementById('dribble-trophy');
+const settingsWarning = document.getElementById('settings-warning');
 
 const config = {
     gravity: 0.07, friction: 0.982, restitution: 1.15, rotationSensitivity: 0.2, boostPower: 0.22, enginePower: 0.18, ballRadius: 18, playerRadius: 13, targetRatio: 1.8,
     colors: { blue: '#0074D9', orange: '#FF851B', ball: '#FFFFFF', border: '#555555', bg: '#020202' }
 };
 
+let settingsModified = false;
 let width, height, arenaWidth, arenaHeight, arenaX, arenaY;
 let scoreBlue = 0, scoreOrange = 0, shakeTime = 0, timeScale = 1.0, flashTime = 0, flashColor = '', resetDelay = 0;
 const particles = [], effects = [], keys = {};
@@ -273,8 +277,7 @@ let currentDribbler = null, dribbleTime = 0, playerName = localStorage.getItem('
 let persistentLeaderboard = JSON.parse(localStorage.getItem('aeroLeaderboard')) || [];
 let sessionLeaderboard = [];
 
-// ONE-TIME RESET (Optional: remove this line after one run if you want to keep data)
-// localStorage.removeItem('aeroLeaderboard'); persistentLeaderboard = [];
+function markModified() { settingsModified = true; settingsWarning.style.display = 'block'; }
 
 const nameInput = document.getElementById('leaderboard-name-input');
 nameInput.value = playerName;
@@ -286,6 +289,13 @@ document.getElementById('close-how-to').onclick = () => document.getElementById(
 document.getElementById('see-all-btn').onclick = () => { document.getElementById('full-leaderboard-overlay').style.display = 'flex'; updateLeaderboardUI(true); };
 document.getElementById('close-full-leaderboard').onclick = () => document.getElementById('full-leaderboard-overlay').style.display = 'none';
 
+document.getElementById('slider-sens').addEventListener('input', e => config.rotationSensitivity = parseFloat(e.target.value));
+document.getElementById('slider-boost').addEventListener('input', e => { config.boostPower = parseFloat(e.target.value); markModified(); });
+document.getElementById('slider-weight').addEventListener('input', e => { config.gravity = parseFloat(e.target.value); markModified(); });
+document.getElementById('slider-friction').addEventListener('input', e => { config.friction = parseFloat(e.target.value); markModified(); });
+document.getElementById('color-blue').addEventListener('input', e => { config.colors.blue = e.target.value; if (player1) player1.color = e.target.value; document.getElementById('score-blue').style.color = e.target.value; document.getElementById('p1-name').style.color = e.target.value; });
+document.getElementById('color-orange').addEventListener('input', e => { config.colors.orange = e.target.value; if (player2) player2.color = e.target.value; document.getElementById('score-orange').style.color = e.target.value; document.getElementById('p2-name').style.color = e.target.value; });
+
 function updateLeaderboardUI(full = false) {
     const merged = {};
     [...persistentLeaderboard, ...sessionLeaderboard].forEach(entry => { if (!merged[entry.name] || entry.score > merged[entry.name].score) merged[entry.name] = entry; });
@@ -296,7 +306,7 @@ function updateLeaderboardUI(full = false) {
 }
 
 function checkDribbleRecord(score) {
-    if (score < 5) return;
+    if (score < 5 || settingsModified) return;
     const finalName = playerName || `Player ${Math.floor(Math.random() * 9000) + 1000}`;
     const entry = { name: finalName, score: score };
     const sessIdx = sessionLeaderboard.findIndex(e => e.name === finalName);
@@ -336,7 +346,9 @@ class Player extends Entity {
         if (!keys[this.controls.jump]) this.jumping = false;
     }
     createBoostFlame() { const backAngle = this.currentAngle + Math.PI; for (let i = 0; i < 2; i++) { const angle = backAngle + (Math.random() - 0.5) * 0.4; const speed = 2 + Math.random() * 3; particles.push(new Particle(this.pos.x + Math.cos(backAngle) * this.radius, this.pos.y + Math.sin(backAngle) * this.radius, this.color, new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed), 'spike')); } }
-    draw() { ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.currentAngle); if (this.pulse > 0) { ctx.beginPath(); ctx.arc(0, 0, this.radius + (20 - this.pulse), 0, Math.PI * 2); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke(); this.pulse--; } ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); ctx.beginPath(); ctx.moveTo(this.radius * 0.6, 0); ctx.lineTo(-this.radius * 0.3, this.radius * 0.4); ctx.lineTo(-this.radius * 0.3, -this.radius * 0.4); ctx.closePath(); ctx.fillStyle = config.colors.bg; ctx.fill(); ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.85, 0.75 * Math.PI, 1.25 * Math.PI); ctx.strokeStyle = config.colors.bg; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore(); }
+    draw() {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.currentAngle); if (this.pulse > 0) { ctx.beginPath(); ctx.arc(0, 0, this.radius + (20 - this.pulse), 0, Math.PI * 2); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke(); this.pulse--; } ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); ctx.beginPath(); ctx.moveTo(this.radius * 0.6, 0); ctx.lineTo(-this.radius * 0.3, this.radius * 0.4); ctx.lineTo(-this.radius * 0.3, -this.radius * 0.4); ctx.closePath(); ctx.fillStyle = config.colors.bg; ctx.fill(); ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.85, 0.75 * Math.PI, 1.25 * Math.PI); ctx.strokeStyle = config.colors.bg; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore();
+    }
 }
 
 class Ball extends Entity {
@@ -399,7 +411,14 @@ function update() {
     if (resetDelay <= 0 && countdown <= 0) {
         if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); resolveCollision(player1, ball); } if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); resolveCollision(player2, ball); } ball.update(ts); checkWallCollision(ball); if (p1Joined && p2Joined) resolveCollision(player1, player2);
         if (!ball.onSurface && currentDribbler && !currentDribbler.isTouchingWall) {
-            dribbleTime += (1 / 60) * ts; if (dribbleTime > 5) { timerContainer.style.display = 'flex'; timerEl.innerText = dribbleTime.toFixed(2) + 's'; timerTrophy.style.display = dribbleTime > getGlobalBest() ? 'block' : 'none'; }
+            if (!settingsModified) {
+                dribbleTime += (1 / 60) * ts;
+                if (dribbleTime > 5) {
+                    timerContainer.style.display = 'flex';
+                    timerEl.innerText = dribbleTime.toFixed(2) + 's';
+                    timerTrophy.style.display = dribbleTime > getGlobalBest() ? 'block' : 'none';
+                }
+            }
         } else { if (dribbleTime > 0) checkDribbleRecord(dribbleTime); dribbleTime = 0; currentDribbler = null; timerContainer.style.display = 'none'; }
     }
     particles.forEach(p => p.update(ts)); for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
