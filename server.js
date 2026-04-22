@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const http = require('http');
+const fs = require('fs');
 const { Server } = require('socket.io');
 
 const app = express();
@@ -14,13 +15,23 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
+const DB_FILE = path.join(__dirname, 'leaderboard.json');
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// Global Leaderboard - Starts fresh and shared for everyone
+// Global Leaderboard - Persistent storage
 let globalLeaderboard = [];
+if (fs.existsSync(DB_FILE)) {
+    try {
+        globalLeaderboard = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    } catch (e) { console.error("Error loading leaderboard:", e); }
+}
+
+function saveLeaderboard() {
+    fs.writeFileSync(DB_FILE, JSON.stringify(globalLeaderboard, null, 2));
+}
 
 // API to get all scores
 app.get('/api/leaderboard', (req, res) => {
@@ -35,7 +46,6 @@ app.post('/api/leaderboard', (req, res) => {
         return res.status(400).json({ error: "Invalid data" });
     }
 
-    // Merge logic: only keep personal best for each name
     const existingIndex = globalLeaderboard.findIndex(e => e.name.toLowerCase() === name.toLowerCase());
     
     if (existingIndex !== -1) {
@@ -46,9 +56,9 @@ app.post('/api/leaderboard', (req, res) => {
         globalLeaderboard.push({ name, score });
     }
 
-    // Sort: highest to lowest
     globalLeaderboard.sort((a, b) => b.score - a.score);
-    globalLeaderboard = globalLeaderboard.slice(0, 50); // Keep top 50 global records
+    globalLeaderboard = globalLeaderboard.slice(0, 50);
+    saveLeaderboard();
 
     res.json({ success: true, leaderboard: globalLeaderboard });
 });
@@ -59,29 +69,24 @@ app.get('/', (req, res) => {
 
 // Multiplayer Socket Logic
 io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
-
     socket.on('joinRoom', (roomID) => {
         socket.join(roomID);
-        console.log(`User ${socket.id} joined room ${roomID}`);
-        
-        // Notify the room that someone joined
         socket.to(roomID).emit('userJoined', socket.id);
     });
 
-    // Simple "screen share" style sync: broadcast state to others in room
     socket.on('syncGameState', (data) => {
-        // data contains ball/player positions, scores, etc.
         socket.to(data.roomID).emit('gameStateUpdate', data.state);
     });
 
-    // Broadcast inputs to others to simulate shared control
     socket.on('playerInput', (data) => {
         socket.to(data.roomID).emit('remoteInput', data.keys);
     });
 
+    socket.on('goalScored', (data) => {
+        io.to(data.roomID).emit('playGoalAnimation', data);
+    });
+
     socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
     });
 });
 
