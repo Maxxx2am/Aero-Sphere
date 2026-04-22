@@ -387,9 +387,16 @@ socket.on('gameStateUpdate', (state) => {
 });
 
 socket.on('remoteInput', (rk) => {
-    // Completely sync remote keys to prevent stuck inputs
+    // Input Filtering: Only map keys for the "other" player
+    // Host is P1 (WASD), Client is P2 (Arrows)
+    const myKeys = isHost ? ['KeyW', 'KeyS', 'KeyA', 'KeyD', 'KeyR', 'KeyT'] : ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Comma', 'Period'];
+    
     for (const key in remoteKeys) remoteKeys[key] = false;
-    for (const key in rk) remoteKeys[key] = rk[key];
+    for (const key in rk) {
+        if (!myKeys.includes(key)) {
+            remoteKeys[key] = rk[key];
+        }
+    }
 });
 
 function syncMultiplayer() {
@@ -584,7 +591,17 @@ function update() {
     if (countdown > 0) { countdown--; const seconds = Math.ceil(countdown / 60); countdownMsgEl.innerText = seconds > 0 ? seconds : "GO!"; if (countdown <= 0) setTimeout(() => { countdownMsgEl.style.display = 'none'; }, 500); }
     if (resetDelay <= 0 && countdown <= 0) {
         syncMultiplayer();
-        if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); resolveCollision(player1, ball); } if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); resolveCollision(player2, ball); } ball.update(ts); checkWallCollision(ball); if (p1Joined && p2Joined) resolveCollision(player1, player2);
+        if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); } if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); } 
+        
+        // Physics Authority: Only host (or offline) handles ball movement and collisions
+        if (isHost || !currentRoom) {
+            ball.update(ts); 
+            checkWallCollision(ball); 
+            if (p1Joined) resolveCollision(player1, ball);
+            if (p2Joined) resolveCollision(player2, ball);
+            if (p1Joined && p2Joined) resolveCollision(player1, player2);
+        }
+
         if (!ball.onSurface && currentDribbler && !currentDribbler.isTouchingWall) {
             if (!settingsModified) {
                 dribbleTime += (1 / 60) * ts;
