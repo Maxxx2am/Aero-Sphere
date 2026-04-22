@@ -21,6 +21,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
+const socketRooms = {}; // Map: socketId -> roomID
+
 // Global Leaderboard - Persistent storage
 let globalLeaderboard = [];
 if (fs.existsSync(DB_FILE)) {
@@ -71,6 +73,7 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
     socket.on('joinRoom', (roomID) => {
         socket.join(roomID);
+        socketRooms[socket.id] = roomID;
         socket.to(roomID).emit('userJoined', socket.id);
     });
 
@@ -83,10 +86,16 @@ io.on('connection', (socket) => {
     });
 
     socket.on('goalScored', (data) => {
-        io.to(data.roomID).emit('playGoalAnimation', data);
+        // Only send to the OTHER player to avoid double creation on Host
+        socket.to(data.roomID).emit('playGoalAnimation', data);
     });
 
     socket.on('disconnect', () => {
+        const roomID = socketRooms[socket.id];
+        if (roomID) {
+            socket.to(roomID).emit('opponentDisconnected');
+            delete socketRooms[socket.id];
+        }
     });
 });
 

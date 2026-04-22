@@ -306,7 +306,7 @@ window.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') retu
 window.addEventListener('keyup', e => { if (e.target.tagName === 'INPUT') return; localKeys[e.code] = false; });
 
 // State & Leaderboard logic
-let player1, player2, ball, posts = [], p1Joined = false, p2Joined = false, countdown = 0, goTimer = 0;
+let player1, player2, ball, posts = [], p1Joined = false, p2Joined = false, countdown = 0, goTimer = 0, syncTick = 0;
 const countdownMsgEl = document.getElementById('countdown-msg');
 let currentDribbler = null, dribbleTime = 0, playerName = localStorage.getItem('aeroPlayerName') || "";
 let globalLeaderboard = [];
@@ -315,6 +315,8 @@ let globalLeaderboard = [];
 const socket = io();
 let currentRoom = null;
 let isHost = false;
+let clientGoalVisible = false;
+let clientShowGo = false;
 const multiStatus = document.getElementById('multi-status');
 const roomInput = document.getElementById('room-input');
 
@@ -357,45 +359,66 @@ document.getElementById('join-room-btn').onclick = () => {
 
 socket.on('gameStateUpdate', (state) => {
     if (isHost) return; // Host is authoritative
-    // Update local state from host (using normalized coordinates to fix different screen sizes)
+    
+    // Position Smoothing (Lerp)
     if (ball) {
-        ball.pos.x = state.ball.x * arenaWidth + arenaX;
-        ball.pos.y = state.ball.y * arenaHeight + arenaY;
+        const lerpFactor = 0.25;
+        const targetBallX = state.ball.x * arenaWidth + arenaX;
+        const targetBallY = state.ball.y * arenaHeight + arenaY;
+        ball.pos.x += (targetBallX - ball.pos.x) * lerpFactor;
+        ball.pos.y += (targetBallY - ball.pos.y) * lerpFactor;
         ball.vel.x = state.ball.vx * gameScale;
         ball.vel.y = state.ball.vy * gameScale;
     }
     if (player1) {
-        player1.pos.x = state.p1.x * arenaWidth + arenaX;
-        player1.pos.y = state.p1.y * arenaHeight + arenaY;
+        const lerpFactor = 0.3;
+        const targetP1X = state.p1.x * arenaWidth + arenaX;
+        const targetP1Y = state.p1.y * arenaHeight + arenaY;
+        player1.pos.x += (targetP1X - player1.pos.x) * lerpFactor;
+        player1.pos.y += (targetP1Y - player1.pos.y) * lerpFactor;
         player1.vel.x = state.p1.vx * gameScale;
         player1.vel.y = state.p1.vy * gameScale;
         player1.currentAngle = state.p1.angle;
         player1.boost = state.p1.boost;
     }
     if (player2) {
-        player2.pos.x = state.p2.x * arenaWidth + arenaX;
-        player2.pos.y = state.p2.y * arenaHeight + arenaY;
+        const lerpFactor = 0.3;
+        const targetP2X = state.p2.x * arenaWidth + arenaX;
+        const targetP2Y = state.p2.y * arenaHeight + arenaY;
+        player2.pos.x += (targetP2X - player2.pos.x) * lerpFactor;
+        player2.pos.y += (targetP2Y - player2.pos.y) * lerpFactor;
         player2.vel.x = state.p2.vx * gameScale;
         player2.vel.y = state.p2.vy * gameScale;
         player2.currentAngle = state.p2.angle;
         player2.boost = state.p2.boost;
     }
+    
     scoreBlue = state.scoreB; scoreOrange = state.scoreO;
     scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
     
-    // Sync Goal message visibility explicitly
-    goalMsgEl.style.opacity = (state.rd > 0) ? 1 : 0;
-    if (state.cd > 0) goalMsgEl.style.opacity = 0; // Prioritize countdown
+    // Gérer le GOAL! uniquement via le flag clientGoalVisible
+    if (clientGoalVisible) {
+        goalMsgEl.style.opacity = 1;
+        // Quand le countdown commence (rd est à 0 et cd est en cours), cacher le GOAL!
+        if (state.rd <= 0 && state.cd > 0) {
+            goalMsgEl.style.opacity = 0;
+            clientGoalVisible = false;
+        }
+    }
 
     timeScale = state.ts; 
     countdown = state.cd;
     resetDelay = state.rd;
+    clientShowGo = state.showGo;
 
-    // Explicit Countdown Sync from Host
+    // Explicit Countdown Sync with Fixed Thresholds
     if (state.cd > 0) {
         countdownMsgEl.style.display = 'block';
-        const seconds = Math.ceil(state.cd / 60);
-        countdownMsgEl.innerText = seconds > 0 ? seconds : "GO!";
+        let displayNum;
+        if (state.cd > 120) displayNum = "3";
+        else if (state.cd > 60) displayNum = "2";
+        else displayNum = "1";
+        countdownMsgEl.innerText = displayNum;
     } else if (state.showGo) {
         countdownMsgEl.style.display = 'block';
         countdownMsgEl.innerText = "GO!";
@@ -418,52 +441,39 @@ socket.on('playGoalAnimation', (data) => {
         const angle = Math.random() * Math.PI * 2, speed = (5 + Math.random() * 15) * gameScale;
         particles.push(new Particle(bx, by, color, new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed), Math.random() > 0.5 ? 'spike' : 'circle'));
     }
+    clientGoalVisible = true;
+});
+
+socket.on('opponentDisconnected', () => {
+    multiStatus.innerText = 'OPPONENT DISCONNECTED';
+    multiStatus.style.color = '#ff4444';
+    currentRoom = null;
+    isHost = false;
+    for (const k in remoteKeys) remoteKeys[k] = false;
 });
 
 socket.on('remoteInput', (rk) => {
-    // Input Filtering: Only map keys for the "other" player
-    // Host is P1 (WASD), Client is P2 (Arrows)
     const myKeys = isHost ? ['KeyW', 'KeyS', 'KeyA', 'KeyD', 'KeyR', 'KeyT'] : ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Comma', 'Period'];
-    
     for (const key in remoteKeys) remoteKeys[key] = false;
     for (const key in rk) {
-        if (!myKeys.includes(key)) {
-            remoteKeys[key] = rk[key];
-        }
+        if (!myKeys.includes(key)) remoteKeys[key] = rk[key];
     }
 });
 
 function syncMultiplayer() {
     if (!currentRoom) return;
     
-    // Both players send their inputs to each other
+    // Throttling: Send updates 20 times per second (every 3 frames)
+    syncTick++;
+    if (syncTick % 3 !== 0) return;
+
     socket.emit('playerInput', { roomID: currentRoom, keys: localKeys });
 
-    // Host sends authoritative physical state (normalized)
     if (isHost) {
         const state = {
-            ball: { 
-                x: (ball.pos.x - arenaX) / arenaWidth, 
-                y: (ball.pos.y - arenaY) / arenaHeight, 
-                vx: ball.vel.x / gameScale, 
-                vy: ball.vel.y / gameScale 
-            },
-            p1: { 
-                x: (player1.pos.x - arenaX) / arenaWidth, 
-                y: (player1.pos.y - arenaY) / arenaHeight, 
-                vx: player1.vel.x / gameScale, 
-                vy: player1.vel.y / gameScale, 
-                angle: player1.currentAngle, 
-                boost: player1.boost 
-            },
-            p2: { 
-                x: (player2.pos.x - arenaX) / arenaWidth, 
-                y: (player2.pos.y - arenaY) / arenaHeight, 
-                vx: player2.vel.x / gameScale, 
-                vy: player2.vel.y / gameScale, 
-                angle: player2.currentAngle, 
-                boost: player2.boost 
-            },
+            ball: { x: (ball.pos.x - arenaX) / arenaWidth, y: (ball.pos.y - arenaY) / arenaHeight, vx: ball.vel.x / gameScale, vy: ball.vel.y / gameScale },
+            p1: { x: (player1.pos.x - arenaX) / arenaWidth, y: (player1.pos.y - arenaY) / arenaHeight, vx: player1.vel.x / gameScale, vy: player1.vel.y / gameScale, angle: player1.currentAngle, boost: player1.boost },
+            p2: { x: (player2.pos.x - arenaX) / arenaWidth, y: (player2.pos.y - arenaY) / arenaHeight, vx: player2.vel.x / gameScale, vy: player2.vel.y / gameScale, angle: player2.currentAngle, boost: player2.boost },
             scoreB: scoreBlue, scoreO: scoreOrange,
             ts: timeScale, cd: countdown, rd: resetDelay,
             showGo: (countdown <= 0 && goTimer > 0)
@@ -646,7 +656,7 @@ function update() {
             resetDelay--; 
             if (resetDelay <= 0) { 
                 timeScale = 1.0; 
-                goalMsgEl.style.opacity = 0; // Clean Reset: Explicitly hide
+                goalMsgEl.style.opacity = 0; 
                 resetPositions(); 
                 startCountdown(); 
             } 
@@ -665,13 +675,21 @@ function update() {
     }
 
     // Ball velocity must be zeroed for both sides during reset and countdown
-    if (resetDelay > 0 || countdown > 0) {
+    if (resetDelay > 0 || countdown > 0 || (currentRoom && !isHost && clientShowGo)) {
         ball.vel.x = 0; ball.vel.y = 0;
     }
 
     if (resetDelay <= 0 && countdown <= 0) {
         syncMultiplayer();
-        if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); } if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); } 
+        
+        if (currentRoom && !isHost) {
+            // Client-side prediction for visual feel (angle only)
+            if (p2Joined) player2.handleInput(ts);
+        } else {
+            // Host or Offline Mode
+            if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); }
+            if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); }
+        }
         
         // Physics Authority: Only host (or offline) handles ball movement and collisions
         if (isHost || !currentRoom) {
