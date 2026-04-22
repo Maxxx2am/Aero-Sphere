@@ -320,15 +320,18 @@ const roomInput = document.getElementById('room-input');
 
 document.getElementById('multiplayer-toggle').onclick = () => {
     const p = document.getElementById('multiplayer-panel');
-    p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    const isOpening = p.style.display !== 'block';
+    p.style.display = isOpening ? 'block' : 'none';
     document.getElementById('settings-panel').style.display = 'none';
     document.getElementById('leaderboard-panel').style.display = 'none';
+    if (isOpening) for (const k in localKeys) localKeys[k] = false;
 };
 
 document.getElementById('create-room-btn').onclick = () => {
     const roomID = roomInput.value.trim().toUpperCase();
     if (!roomID) return alert("Enter a Room ID");
     for (const k in localKeys) localKeys[k] = false;
+    for (const k in remoteKeys) remoteKeys[k] = false;
     roomInput.blur();
     currentRoom = roomID;
     isHost = true;
@@ -342,6 +345,7 @@ document.getElementById('join-room-btn').onclick = () => {
     const roomID = roomInput.value.trim().toUpperCase();
     if (!roomID) return alert("Enter a Room ID");
     for (const k in localKeys) localKeys[k] = false;
+    for (const k in remoteKeys) remoteKeys[k] = false;
     roomInput.blur();
     currentRoom = roomID;
     isHost = false;
@@ -378,6 +382,8 @@ socket.on('gameStateUpdate', (state) => {
     }
     scoreBlue = state.scoreB; scoreOrange = state.scoreO;
     scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
+    timeScale = state.ts; countdown = state.cd;
+    if (countdown > 0) countdownMsgEl.style.display = 'block';
 });
 
 socket.on('remoteInput', (rk) => {
@@ -417,7 +423,8 @@ function syncMultiplayer() {
                 angle: player2.currentAngle, 
                 boost: player2.boost 
             },
-            scoreB: scoreBlue, scoreO: scoreOrange
+            scoreB: scoreBlue, scoreO: scoreOrange,
+            ts: timeScale, cd: countdown
         };
         socket.emit('syncGameState', { roomID: currentRoom, state: state });
     }
