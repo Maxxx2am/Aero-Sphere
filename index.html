@@ -110,18 +110,21 @@
     <div id="goal-msg" class="goal-msg">GOAL!</div>
     <div id="countdown-msg">3</div>
     
-    <div class="controls-hint" id="p1-controls">
-        <span id="p1-name" style="color: #0074D9">BLUE</span><br>
+    <div class="controls-hint" id="p1-controls" style="display: none;">
+        <span id="p1-name" style="color: #0074D9">PLAYER 1</span><br>
         WASD: MOVE<br>
         R: BOOST<br>
         T: JUMP
     </div>
-    <div class="controls-hint" id="p2-controls">
-        <span id="p2-name" style="color: #FF851B">ORANGE</span><br>
+    <div class="controls-hint" id="p2-controls" style="display: none;">
+        <span id="p2-name" style="color: #FF851B">PLAYER 2</span><br>
         ARROWS: MOVE<br>
         ,: BOOST<br>
         .: JUMP
     </div>
+
+    <div id="p1-join" class="controls-hint" style="left: 40px; bottom: 40px; color: #fff; font-size: 14px;">PRESS <span style="color: #0074D9">W</span> TO JOIN</div>
+    <div id="p2-join" class="controls-hint" style="right: 40px; bottom: 40px; color: #fff; font-size: 14px;">PRESS <span style="color: #FF851B">UP</span> TO JOIN</div>
 </div>
 
 <div id="settings-toggle">
@@ -450,6 +453,8 @@ class JumpAura {
 }
 
 let player1, player2, ball, posts = [];
+let p1Joined = false;
+let p2Joined = false;
 
 function init() {
     const winW = window.innerWidth, winH = window.innerHeight;
@@ -646,6 +651,18 @@ function startCountdown() {
 
 function update() {
     const ts = timeScale;
+
+    // Join logic
+    if (!p1Joined && keys['KeyW']) {
+        p1Joined = true;
+        document.getElementById('p1-join').style.display = 'none';
+        document.getElementById('p1-controls').style.display = 'block';
+    }
+    if (!p2Joined && keys['ArrowUp']) {
+        p2Joined = true;
+        document.getElementById('p2-join').style.display = 'none';
+        document.getElementById('p2-controls').style.display = 'block';
+    }
     
     if (resetDelay > 0) {
         resetDelay--;
@@ -668,11 +685,20 @@ function update() {
 
     // Only update physics and handle input if not resetting or counting down
     if (resetDelay <= 0 && countdown <= 0) {
-        player1.handleInput(ts); player2.handleInput(ts);
-        player1.update(ts); player2.update(ts); ball.update(ts);
+        if (p1Joined) player1.handleInput(ts);
+        if (p2Joined) player2.handleInput(ts);
         
-        checkWallCollision(player1); checkWallCollision(player2); checkWallCollision(ball);
-        resolveCollision(player1, ball); resolveCollision(player2, ball); resolveCollision(player1, player2);
+        if (p1Joined) player1.update(ts);
+        if (p2Joined) player2.update(ts);
+        ball.update(ts);
+        
+        if (p1Joined) checkWallCollision(player1);
+        if (p2Joined) checkWallCollision(player2);
+        checkWallCollision(ball);
+        
+        if (p1Joined) resolveCollision(player1, ball);
+        if (p2Joined) resolveCollision(player2, ball);
+        if (p1Joined && p2Joined) resolveCollision(player1, player2);
     }
     
     particles.forEach(p => p.update(ts));
@@ -712,26 +738,31 @@ function draw() {
     ctx.stroke();
 
     effects.forEach(e => e.draw());
-    player1.draw(); player2.draw(); ball.draw();
+    if (p1Joined) player1.draw();
+    if (p2Joined) player2.draw();
+    ball.draw();
     particles.forEach(p => p.draw());
 
-    // Boost Gauges
+    // UI Elements for Joined Players
     const gW = 12, gH = 180;
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    ctx.fillRect(40, canvas.height - 220, gW, gH);
-    ctx.fillRect(canvas.width - 52, canvas.height - 220, gW, gH);
-    // SCALE FIX: 1.6 * 112 = 179.2 (matches gH)
-    ctx.fillStyle = config.colors.blue; ctx.fillRect(40, canvas.height - 40 - (player1.boost * 1.6), gW, player1.boost * 1.6);
-    ctx.fillStyle = config.colors.orange; ctx.fillRect(canvas.width - 52, canvas.height - 40 - (player2.boost * 1.6), gW, player2.boost * 1.6);
+    if (p1Joined) ctx.fillRect(40, canvas.height - 220, gW, gH);
+    if (p2Joined) ctx.fillRect(canvas.width - 52, canvas.height - 220, gW, gH);
 
-    // Jump Indicators (Glowing dots to show jump is ready)
-    if (player1.hasJump) {
-        ctx.beginPath(); ctx.arc(46, canvas.height - 235, 4, 0, Math.PI * 2);
-        ctx.fillStyle = "#fff"; ctx.shadowBlur = 10; ctx.shadowColor = config.colors.blue; ctx.fill(); ctx.shadowBlur = 0;
+    // Boost Bars
+    if (p1Joined) {
+        ctx.fillStyle = config.colors.blue; ctx.fillRect(40, canvas.height - 40 - (player1.boost * 1.6), gW, player1.boost * 1.6);
+        if (player1.hasJump) {
+            ctx.beginPath(); ctx.arc(46, canvas.height - 235, 4, 0, Math.PI * 2);
+            ctx.fillStyle = "#fff"; ctx.shadowBlur = 10; ctx.shadowColor = config.colors.blue; ctx.fill(); ctx.shadowBlur = 0;
+        }
     }
-    if (player2.hasJump) {
-        ctx.beginPath(); ctx.arc(canvas.width - 46, canvas.height - 235, 4, 0, Math.PI * 2);
-        ctx.fillStyle = "#fff"; ctx.shadowBlur = 10; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0;
+    if (p2Joined) {
+        ctx.fillStyle = config.colors.orange; ctx.fillRect(canvas.width - 52, canvas.height - 40 - (player2.boost * 1.6), gW, player2.boost * 1.6);
+        if (player2.hasJump) {
+            ctx.beginPath(); ctx.arc(canvas.width - 46, canvas.height - 235, 4, 0, Math.PI * 2);
+            ctx.fillStyle = "#fff"; ctx.shadowBlur = 10; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0;
+        }
     }
 
     ctx.restore();
