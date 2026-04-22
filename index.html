@@ -383,13 +383,14 @@ socket.on('gameStateUpdate', (state) => {
     scoreBlue = state.scoreB; scoreOrange = state.scoreO;
     scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
     
-    if (state.ts === 1.0) goalMsgEl.style.opacity = 0;
+    // Goal Visibility Sync
+    goalMsgEl.style.opacity = (state.rd > 0) ? 1 : 0;
 
     timeScale = state.ts; 
     countdown = state.cd;
     resetDelay = state.rd;
 
-    // Explicit Countdown Sync for Client
+    // Explicit Countdown Sync with Priority
     if (countdown > 0) {
         countdownMsgEl.style.display = 'block';
         const seconds = Math.ceil(countdown / 60);
@@ -439,10 +440,6 @@ function syncMultiplayer() {
 
     // Host sends authoritative physical state (normalized)
     if (isHost) {
-        // Detect if a goal just happened (based on goalMsgEl visibility and timeScale)
-        const isGoalHappening = goalMsgEl.style.opacity === "1";
-        const goalTeam = isGoalHappening ? (flashColor.includes("0, 116, 217") ? 'blue' : 'orange') : null;
-
         const state = {
             ball: { 
                 x: (ball.pos.x - arenaX) / arenaWidth, 
@@ -468,8 +465,7 @@ function syncMultiplayer() {
             },
             scoreB: scoreBlue, scoreO: scoreOrange,
             ts: timeScale, cd: countdown, rd: resetDelay,
-            showGo: (countdown <= 0 && goTimer > 0),
-            goalTeam: goalTeam
+            showGo: (countdown <= 0 && goTimer > 0)
         };
         socket.emit('syncGameState', { roomID: currentRoom, state: state });
     }
@@ -647,7 +643,12 @@ function update() {
     if (isHost || !currentRoom) {
         if (resetDelay > 0) { 
             resetDelay--; 
-            if (resetDelay <= 0) { timeScale = 1.0; goalMsgEl.style.opacity = 0; resetPositions(); startCountdown(); } 
+            if (resetDelay <= 0) { 
+                timeScale = 1.0; 
+                goalMsgEl.style.opacity = 0; 
+                resetPositions(); 
+                startCountdown(); 
+            } 
         }
         if (countdown > 0) { 
             countdown--; 
@@ -662,8 +663,8 @@ function update() {
         }
     }
 
-    // Ball velocity must be zeroed for both sides during resetDelay
-    if (resetDelay > 0) {
+    // Ball velocity must be zeroed for both sides during reset and countdown
+    if (resetDelay > 0 || countdown > 0) {
         ball.vel.x = 0; ball.vel.y = 0;
     }
 
