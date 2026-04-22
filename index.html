@@ -306,7 +306,7 @@ window.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') retu
 window.addEventListener('keyup', e => { if (e.target.tagName === 'INPUT') return; localKeys[e.code] = false; });
 
 // State & Leaderboard logic
-let player1, player2, ball, posts = [], p1Joined = false, p2Joined = false, countdown = 0;
+let player1, player2, ball, posts = [], p1Joined = false, p2Joined = false, countdown = 0, goTimer = 0;
 const countdownMsgEl = document.getElementById('countdown-msg');
 let currentDribbler = null, dribbleTime = 0, playerName = localStorage.getItem('aeroPlayerName') || "";
 let globalLeaderboard = [];
@@ -467,7 +467,8 @@ function syncMultiplayer() {
                 boost: player2.boost 
             },
             scoreB: scoreBlue, scoreO: scoreOrange,
-            ts: timeScale, cd: countdown,
+            ts: timeScale, cd: countdown, rd: resetDelay,
+            showGo: (countdown <= 0 && goTimer > 0),
             goalTeam: goalTeam
         };
         socket.emit('syncGameState', { roomID: currentRoom, state: state });
@@ -652,8 +653,12 @@ function update() {
             countdown--; 
             if (countdown <= 0) {
                 countdownMsgEl.innerText = "GO!";
-                setTimeout(() => { if (!currentRoom || isHost) countdownMsgEl.style.display = 'none'; }, 500); 
+                goTimer = 40; // ~0.6s display for "GO!"
             }
+        }
+        if (goTimer > 0) {
+            goTimer--;
+            if (goTimer <= 0) countdownMsgEl.style.display = 'none';
         }
     }
 
@@ -698,12 +703,6 @@ function draw() {
     if (p2Joined) { ctx.fillRect(canvas.width - 52 * gameScale, canvas.height - 220 * gameScale, gW, ghBar); ctx.fillStyle = config.colors.orange; ctx.fillRect(canvas.width - 52 * gameScale, canvas.height - 40 * gameScale - (player2.boost * 1.6 * gameScale), gW, player2.boost * 1.6 * gameScale); if (player2.hasJump) { ctx.beginPath(); ctx.arc(canvas.width - 46 * gameScale, canvas.height - 235 * gameScale, 4 * gameScale, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0; } }
     ctx.restore();
 }
-
-function loop() { update(); draw(); requestAnimationFrame(loop); }
-window.onresize = init; init(); loop();
-</script>
-</body>
-</html>
 
 function loop() { update(); draw(); requestAnimationFrame(loop); }
 window.onresize = init; init(); loop();
