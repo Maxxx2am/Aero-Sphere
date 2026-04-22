@@ -662,7 +662,11 @@ function update() {
             } 
         }
         if (countdown > 0) { 
-            countdown--; 
+            countdown--;
+            // Update the displayed number for the host (3, 2, 1)
+            if (countdown > 120) countdownMsgEl.innerText = "3";
+            else if (countdown > 60) countdownMsgEl.innerText = "2";
+            else if (countdown > 0) countdownMsgEl.innerText = "1";
             if (countdown <= 0) {
                 countdownMsgEl.innerText = "GO!";
                 goTimer = 40; // ~0.6s display for "GO!"
@@ -674,8 +678,8 @@ function update() {
         }
     }
 
-    // Ball velocity must be zeroed for both sides during reset and countdown
-    if (resetDelay > 0 || countdown > 0 || (currentRoom && !isHost && clientShowGo)) {
+    // Ball velocity must be zeroed for both sides during reset, countdown and GO! display
+    if (resetDelay > 0 || countdown > 0 || goTimer > 0 || (currentRoom && !isHost && clientShowGo)) {
         ball.vel.x = 0; ball.vel.y = 0;
     }
 
@@ -683,7 +687,7 @@ function update() {
     // so the client receives resetDelay/countdown updates and doesn't freeze
     syncMultiplayer();
 
-    if (resetDelay <= 0 && countdown <= 0) {
+    if (resetDelay <= 0 && countdown <= 0 && goTimer <= 0) {
         if (currentRoom && !isHost) {
             // Client-side prediction for visual feel (angle only)
             if (p2Joined) player2.handleInput(ts);
