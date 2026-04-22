@@ -295,8 +295,15 @@ document.getElementById('color-orange').addEventListener('input', e => {
 
 function updateLeaderboardUI() {
     const list = document.getElementById('leaderboard-list');
-    // Combine persistent and session, sort by score
-    const combined = [...persistentLeaderboard, ...sessionLeaderboard]
+    // Combine persistent and session, merge by name, and sort
+    const merged = {};
+    [...persistentLeaderboard, ...sessionLeaderboard].forEach(entry => {
+        if (!merged[entry.name] || entry.score > merged[entry.name].score) {
+            merged[entry.name] = entry;
+        }
+    });
+
+    const combined = Object.values(merged)
         .sort((a, b) => b.score - a.score)
         .slice(0, 10);
         
@@ -311,14 +318,23 @@ function updateLeaderboardUI() {
 function checkDribbleRecord(score) {
     if (score < 5) return;
     const finalName = playerName || `Player ${Math.floor(Math.random() * 9000) + 1000}`;
-    const newEntry = { name: finalName, score: score };
     
-    // Add to session leaderboard
-    sessionLeaderboard.push(newEntry);
+    // Update Session Leaderboard (keep only best for name)
+    const sessIdx = sessionLeaderboard.findIndex(e => e.name === finalName);
+    if (sessIdx !== -1) {
+        if (score > sessionLeaderboard[sessIdx].score) sessionLeaderboard[sessIdx].score = score;
+    } else {
+        sessionLeaderboard.push({ name: finalName, score: score });
+    }
     
-    // Save to persistent storage ONLY if name is set
+    // Save to persistent storage ONLY if name is set (keep only best for name)
     if (playerName) {
-        persistentLeaderboard.push(newEntry);
+        const persIdx = persistentLeaderboard.findIndex(e => e.name === finalName);
+        if (persIdx !== -1) {
+            if (score > persistentLeaderboard[persIdx].score) persistentLeaderboard[persIdx].score = score;
+        } else {
+            persistentLeaderboard.push({ name: finalName, score: score });
+        }
         persistentLeaderboard.sort((a, b) => b.score - a.score);
         persistentLeaderboard = persistentLeaderboard.slice(0, 10);
         localStorage.setItem('aeroLeaderboard', JSON.stringify(persistentLeaderboard));
