@@ -382,8 +382,25 @@ socket.on('gameStateUpdate', (state) => {
     }
     scoreBlue = state.scoreB; scoreOrange = state.scoreO;
     scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
+    
+    // Sync Goal Effects
+    if (state.goalTeam) {
+        goalMsgEl.style.opacity = 1;
+        shakeTime = 30;
+        flashTime = 25;
+        flashColor = state.goalTeam === 'blue' ? hexToRgba(config.colors.blue, 0.4) : hexToRgba(config.colors.orange, 0.4);
+    } else if (state.ts === 1.0) {
+        goalMsgEl.style.opacity = 0;
+    }
+
     timeScale = state.ts; countdown = state.cd;
-    if (countdown > 0) countdownMsgEl.style.display = 'block';
+    if (countdown > 0) {
+        countdownMsgEl.style.display = 'block';
+        const seconds = Math.ceil(countdown / 60);
+        countdownMsgEl.innerText = seconds > 0 ? seconds : "GO!";
+    } else {
+        countdownMsgEl.style.display = 'none';
+    }
 });
 
 socket.on('remoteInput', (rk) => {
@@ -407,6 +424,10 @@ function syncMultiplayer() {
 
     // Host sends authoritative physical state (normalized)
     if (isHost) {
+        // Detect if a goal just happened (based on goalMsgEl visibility and timeScale)
+        const isGoalHappening = goalMsgEl.style.opacity === "1";
+        const goalTeam = isGoalHappening ? (flashColor.includes("0, 116, 217") ? 'blue' : 'orange') : null;
+
         const state = {
             ball: { 
                 x: (ball.pos.x - arenaX) / arenaWidth, 
@@ -431,7 +452,8 @@ function syncMultiplayer() {
                 boost: player2.boost 
             },
             scoreB: scoreBlue, scoreO: scoreOrange,
-            ts: timeScale, cd: countdown
+            ts: timeScale, cd: countdown,
+            goalTeam: goalTeam
         };
         socket.emit('syncGameState', { roomID: currentRoom, state: state });
     }
