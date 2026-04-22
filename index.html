@@ -341,20 +341,26 @@ document.getElementById('join-room-btn').onclick = () => {
 
 socket.on('gameStateUpdate', (state) => {
     if (isHost) return; // Host is authoritative
-    // Update local state from host
+    // Update local state from host (using normalized coordinates to fix different screen sizes)
     if (ball) {
-        ball.pos.x = state.ball.x; ball.pos.y = state.ball.y;
-        ball.vel.x = state.ball.vx; ball.vel.y = state.ball.vy;
+        ball.pos.x = state.ball.x * arenaWidth + arenaX;
+        ball.pos.y = state.ball.y * arenaHeight + arenaY;
+        ball.vel.x = state.ball.vx * gameScale;
+        ball.vel.y = state.ball.vy * gameScale;
     }
     if (player1) {
-        player1.pos.x = state.p1.x; player1.pos.y = state.p1.y;
-        player1.vel.x = state.p1.vx; player1.vel.y = state.p1.vy;
+        player1.pos.x = state.p1.x * arenaWidth + arenaX;
+        player1.pos.y = state.p1.y * arenaHeight + arenaY;
+        player1.vel.x = state.p1.vx * gameScale;
+        player1.vel.y = state.p1.vy * gameScale;
         player1.currentAngle = state.p1.angle;
         player1.boost = state.p1.boost;
     }
     if (player2) {
-        player2.pos.x = state.p2.x; player2.pos.y = state.p2.y;
-        player2.vel.x = state.p2.vx; player2.vel.y = state.p2.vy;
+        player2.pos.x = state.p2.x * arenaWidth + arenaX;
+        player2.pos.y = state.p2.y * arenaHeight + arenaY;
+        player2.vel.x = state.p2.vx * gameScale;
+        player2.vel.y = state.p2.vy * gameScale;
         player2.currentAngle = state.p2.angle;
         player2.boost = state.p2.boost;
     }
@@ -375,12 +381,31 @@ function syncMultiplayer() {
     // Both players send their inputs to each other
     socket.emit('playerInput', { roomID: currentRoom, keys: keys });
 
-    // Host sends authoritative physical state
+    // Host sends authoritative physical state (normalized)
     if (isHost) {
         const state = {
-            ball: { x: ball.pos.x, y: ball.pos.y, vx: ball.vel.x, vy: ball.vel.y },
-            p1: { x: player1.pos.x, y: player1.pos.y, vx: player1.vel.x, vy: player1.vel.y, angle: player1.currentAngle, boost: player1.boost },
-            p2: { x: player2.pos.x, y: player2.pos.y, vx: player2.vel.x, vy: player2.vel.y, angle: player2.currentAngle, boost: player2.boost },
+            ball: { 
+                x: (ball.pos.x - arenaX) / arenaWidth, 
+                y: (ball.pos.y - arenaY) / arenaHeight, 
+                vx: ball.vel.x / gameScale, 
+                vy: ball.vel.y / gameScale 
+            },
+            p1: { 
+                x: (player1.pos.x - arenaX) / arenaWidth, 
+                y: (player1.pos.y - arenaY) / arenaHeight, 
+                vx: player1.vel.x / gameScale, 
+                vy: player1.vel.y / gameScale, 
+                angle: player1.currentAngle, 
+                boost: player1.boost 
+            },
+            p2: { 
+                x: (player2.pos.x - arenaX) / arenaWidth, 
+                y: (player2.pos.y - arenaY) / arenaHeight, 
+                vx: player2.vel.x / gameScale, 
+                vy: player2.vel.y / gameScale, 
+                angle: player2.currentAngle, 
+                boost: player2.boost 
+            },
             scoreB: scoreBlue, scoreO: scoreOrange
         };
         socket.emit('syncGameState', { roomID: currentRoom, state: state });
