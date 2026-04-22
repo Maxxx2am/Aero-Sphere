@@ -211,7 +211,7 @@
 </div>
 
 <div id="settings-toggle">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
 </div>
 
 <div id="multiplayer-toggle">
@@ -383,17 +383,18 @@ socket.on('gameStateUpdate', (state) => {
     scoreBlue = state.scoreB; scoreOrange = state.scoreO;
     scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
     
-    // Goal Visibility Sync
+    // Sync Goal message visibility explicitly
     goalMsgEl.style.opacity = (state.rd > 0) ? 1 : 0;
+    if (state.cd > 0) goalMsgEl.style.opacity = 0; // Prioritize countdown
 
     timeScale = state.ts; 
     countdown = state.cd;
     resetDelay = state.rd;
 
-    // Explicit Countdown Sync with Priority
-    if (countdown > 0) {
+    // Explicit Countdown Sync from Host
+    if (state.cd > 0) {
         countdownMsgEl.style.display = 'block';
-        const seconds = Math.ceil(countdown / 60);
+        const seconds = Math.ceil(state.cd / 60);
         countdownMsgEl.innerText = seconds > 0 ? seconds : "GO!";
     } else if (state.showGo) {
         countdownMsgEl.style.display = 'block';
@@ -645,7 +646,7 @@ function update() {
             resetDelay--; 
             if (resetDelay <= 0) { 
                 timeScale = 1.0; 
-                goalMsgEl.style.opacity = 0; 
+                goalMsgEl.style.opacity = 0; // Clean Reset: Explicitly hide
                 resetPositions(); 
                 startCountdown(); 
             } 
