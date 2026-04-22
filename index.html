@@ -40,7 +40,7 @@
         #settings-toggle {
             position: absolute;
             top: 25px;
-            right: 25px;
+            right: 70px;
             cursor: pointer;
             pointer-events: auto;
             z-index: 100;
@@ -49,15 +49,24 @@
         #leaderboard-toggle {
             position: absolute;
             top: 25px;
-            right: 70px;
+            right: 115px;
             cursor: pointer;
             pointer-events: auto;
             z-index: 100;
             opacity: 0.5;
         }
-        #settings-toggle:hover, #leaderboard-toggle:hover { opacity: 1; }
+        #multiplayer-toggle {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            cursor: pointer;
+            pointer-events: auto;
+            z-index: 100;
+            opacity: 0.5;
+        }
+        #settings-toggle:hover, #leaderboard-toggle:hover, #multiplayer-toggle:hover { opacity: 1; }
         
-        #settings-panel, #leaderboard-panel {
+        #settings-panel, #leaderboard-panel, #multiplayer-panel {
             position: absolute;
             top: 75px;
             right: 25px;
@@ -205,6 +214,22 @@
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
 </div>
 
+<div id="multiplayer-toggle">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+</div>
+
+<div id="multiplayer-panel">
+    <label style="font-size: 10px; color: #555; text-transform: uppercase;">Multiplayer Room</label>
+    <div style="margin-bottom: 15px; margin-top: 10px;">
+        <input type="text" id="room-input" placeholder="ROOM ID" maxlength="8" style="background: #000; border: 1px solid #444; color: #fff; padding: 8px; font-size: 12px; width: 100%; margin-bottom: 10px; text-align: center; letter-spacing: 2px;">
+        <div style="display: flex; gap: 5px;">
+            <button id="create-room-btn" style="flex: 1; background: #222; color: #fff; border: 1px solid #444; padding: 10px; font-size: 10px; cursor: pointer; font-weight: bold;">CREATE</button>
+            <button id="join-room-btn" style="flex: 1; background: #222; color: #fff; border: 1px solid #444; padding: 10px; font-size: 10px; cursor: pointer; font-weight: bold;">JOIN</button>
+        </div>
+    </div>
+    <div id="multi-status" style="font-size: 9px; color: #777; text-align: center; font-style: italic; margin-top: 10px;">OFFLINE MODE</div>
+</div>
+
 <div id="settings-panel">
     <div class="setting-row">
         <label>Sensitivity</label>
@@ -252,6 +277,7 @@
 
 <canvas id="gameCanvas"></canvas>
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
 const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
 const scoreBlueEl = document.getElementById('score-blue'), scoreOrangeEl = document.getElementById('score-orange'), goalMsgEl = document.getElementById('goal-msg');
@@ -278,6 +304,88 @@ let player1, player2, ball, posts = [], p1Joined = false, p2Joined = false, coun
 const countdownMsgEl = document.getElementById('countdown-msg');
 let currentDribbler = null, dribbleTime = 0, playerName = localStorage.getItem('aeroPlayerName') || "";
 let globalLeaderboard = [];
+
+// Multiplayer State
+const socket = io();
+let currentRoom = null;
+let isHost = false;
+const multiStatus = document.getElementById('multi-status');
+const roomInput = document.getElementById('room-input');
+
+document.getElementById('multiplayer-toggle').onclick = () => {
+    const p = document.getElementById('multiplayer-panel');
+    p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    document.getElementById('settings-panel').style.display = 'none';
+    document.getElementById('leaderboard-panel').style.display = 'none';
+};
+
+document.getElementById('create-room-btn').onclick = () => {
+    const roomID = roomInput.value.trim().toUpperCase();
+    if (!roomID) return alert("Enter a Room ID");
+    currentRoom = roomID;
+    isHost = true;
+    socket.emit('joinRoom', roomID);
+    multiStatus.innerText = `HOSTING: ${roomID}`;
+    multiStatus.style.color = '#0074D9';
+};
+
+document.getElementById('join-room-btn').onclick = () => {
+    const roomID = roomInput.value.trim().toUpperCase();
+    if (!roomID) return alert("Enter a Room ID");
+    currentRoom = roomID;
+    isHost = false;
+    socket.emit('joinRoom', roomID);
+    multiStatus.innerText = `CONNECTED: ${roomID}`;
+    multiStatus.style.color = '#FF851B';
+};
+
+socket.on('gameStateUpdate', (state) => {
+    if (isHost) return; // Host is authoritative
+    // Update local state from host
+    if (ball) {
+        ball.pos.x = state.ball.x; ball.pos.y = state.ball.y;
+        ball.vel.x = state.ball.vx; ball.vel.y = state.ball.vy;
+    }
+    if (player1) {
+        player1.pos.x = state.p1.x; player1.pos.y = state.p1.y;
+        player1.vel.x = state.p1.vx; player1.vel.y = state.p1.vy;
+        player1.currentAngle = state.p1.angle;
+        player1.boost = state.p1.boost;
+    }
+    if (player2) {
+        player2.pos.x = state.p2.x; player2.pos.y = state.p2.y;
+        player2.vel.x = state.p2.vx; player2.vel.y = state.p2.vy;
+        player2.currentAngle = state.p2.angle;
+        player2.boost = state.p2.boost;
+    }
+    scoreBlue = state.scoreB; scoreOrange = state.scoreO;
+    scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
+});
+
+socket.on('remoteInput', (remoteKeys) => {
+    // Merge remote keys into local keys to simulate shared control
+    for (const key in remoteKeys) {
+        if (remoteKeys[key]) keys[key] = true;
+    }
+});
+
+function syncMultiplayer() {
+    if (!currentRoom) return;
+    
+    // Both players send their inputs to each other
+    socket.emit('playerInput', { roomID: currentRoom, keys: keys });
+
+    // Host sends authoritative physical state
+    if (isHost) {
+        const state = {
+            ball: { x: ball.pos.x, y: ball.pos.y, vx: ball.vel.x, vy: ball.vel.y },
+            p1: { x: player1.pos.x, y: player1.pos.y, vx: player1.vel.x, vy: player1.vel.y, angle: player1.currentAngle, boost: player1.boost },
+            p2: { x: player2.pos.x, y: player2.pos.y, vx: player2.vel.x, vy: player2.vel.y, angle: player2.currentAngle, boost: player2.boost },
+            scoreB: scoreBlue, scoreO: scoreOrange
+        };
+        socket.emit('syncGameState', { roomID: currentRoom, state: state });
+    }
+}
 
 function markModified() { settingsModified = true; settingsWarning.style.display = 'block'; }
 
@@ -432,6 +540,7 @@ function update() {
     if (resetDelay > 0) { resetDelay--; if (resetDelay <= 0) { timeScale = 1.0; goalMsgEl.style.opacity = 0; resetPositions(); startCountdown(); } }
     if (countdown > 0) { countdown--; const seconds = Math.ceil(countdown / 60); countdownMsgEl.innerText = seconds > 0 ? seconds : "GO!"; if (countdown <= 0) setTimeout(() => { countdownMsgEl.style.display = 'none'; }, 500); }
     if (resetDelay <= 0 && countdown <= 0) {
+        syncMultiplayer();
         if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); resolveCollision(player1, ball); } if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); resolveCollision(player2, ball); } ball.update(ts); checkWallCollision(ball); if (p1Joined && p2Joined) resolveCollision(player1, player2);
         if (!ball.onSurface && currentDribbler && !currentDribbler.isTouchingWall) {
             if (!settingsModified) {
