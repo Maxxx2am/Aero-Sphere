@@ -679,9 +679,11 @@ function update() {
         ball.vel.x = 0; ball.vel.y = 0;
     }
 
+    // Host must sync state at ALL times (including during GOAL! and countdown)
+    // so the client receives resetDelay/countdown updates and doesn't freeze
+    syncMultiplayer();
+
     if (resetDelay <= 0 && countdown <= 0) {
-        syncMultiplayer();
-        
         if (currentRoom && !isHost) {
             // Client-side prediction for visual feel (angle only)
             if (p2Joined) player2.handleInput(ts);
