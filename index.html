@@ -29,7 +29,7 @@
             position: absolute;
             top: 15px;
             left: 15px;
-            font-size: 60px; /* Massive score numbers */
+            font-size: 60px;
             font-weight: 900;
             color: #fff;
             background: rgba(0, 0, 0, 0.2);
@@ -95,43 +95,6 @@
             pointer-events: none;
             z-index: 5;
         }
-        #name-input-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 200;
-            pointer-events: auto;
-        }
-        .name-box {
-            background: #111;
-            padding: 30px;
-            border: 2px solid #555;
-            text-align: center;
-        }
-        .name-box input {
-            background: #000;
-            border: 1px solid #444;
-            color: #fff;
-            padding: 10px;
-            margin: 15px 0;
-            width: 200px;
-            text-align: center;
-        }
-        .name-box button {
-            background: #444;
-            color: #fff;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-        }
-        .name-box button:hover { background: #666; }
-
         .setting-row { margin-bottom: 12px; }
         .setting-row label { display: block; font-size: 10px; margin-bottom: 6px; color: #555; text-transform: uppercase; letter-spacing: 1px; }
         input[type=range] { width: 100%; cursor: pointer; accent-color: #777; }
@@ -163,7 +126,7 @@
         }
         .controls-hint {
             position: absolute;
-            bottom: 40px; /* Aligned with the bottom of the gauges */
+            bottom: 40px;
             font-size: 10px;
             color: rgba(255, 255, 255, 0.35);
             text-transform: uppercase;
@@ -206,22 +169,17 @@
 </div>
 
 <div id="leaderboard-panel">
+    <label style="font-size: 10px; color: #555; text-transform: uppercase;">Your Name</label>
+    <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+        <input type="text" id="leaderboard-name-input" placeholder="ENTER NAME" maxlength="12" style="background: #000; border: 1px solid #444; color: #fff; padding: 5px; font-size: 10px; width: 100%;">
+        <button id="save-name-btn" style="background: #333; color: #fff; border: 1px solid #444; padding: 5px 10px; font-size: 10px; cursor: pointer;">SET</button>
+    </div>
     <label style="font-size: 10px; color: #555; text-transform: uppercase;">Top Air Dribbles</label>
     <div id="leaderboard-list" class="leaderboard-list"></div>
 </div>
 
-<div id="name-input-overlay">
-    <div class="name-box">
-        <h2 style="margin: 0; color: #fff;">NEW RECORD!</h2>
-        <p id="score-display" style="color: #aaa; margin: 10px 0;"></p>
-        <input type="text" id="player-name-input" placeholder="ENTER YOUR NAME" maxlength="15">
-        <br>
-        <button id="save-name-btn">SAVE TO LEADERBOARD</button>
-    </div>
-</div>
-
 <div id="settings-toggle">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1-2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
 </div>
 
 <div id="settings-panel">
@@ -254,10 +212,6 @@
 <canvas id="gameCanvas"></canvas>
 
 <script>
-/**
- * AERO-SPHERE V5 - POLISHED & BUG-FREE
- */
-
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreBlueEl = document.getElementById('score-blue');
@@ -290,88 +244,64 @@ const config = {
 };
 
 let width, height, arenaWidth, arenaHeight, arenaX, arenaY;
-let scoreBlue = 0;
-let scoreOrange = 0;
-let shakeTime = 0;
-let timeScale = 1.0;
-let flashTime = 0;
-let flashColor = '';
-let resetDelay = 0;
-const particles = [];
-const effects = [];
-
+let scoreBlue = 0, scoreOrange = 0, shakeTime = 0, timeScale = 1.0, flashTime = 0, flashColor = '', resetDelay = 0;
+const particles = [], effects = [];
 const keys = {};
 window.addEventListener('keydown', e => keys[e.code] = true);
 window.addEventListener('keyup', e => keys[e.code] = false);
 
-// Air Dribble State
-let currentDribbler = null;
-let dribbleTime = 0;
-let wallTime = 0;
-let leaderboard = JSON.parse(localStorage.getItem('aeroLeaderboard')) || [];
-let pendingScore = null;
+// State & Leaderboard
+let player1, player2, ball, posts = [], p1Joined = false, p2Joined = false, countdown = 0;
+const countdownMsgEl = document.getElementById('countdown-msg');
+let currentDribbler = null, dribbleTime = 0, leaderboard = JSON.parse(localStorage.getItem('aeroLeaderboard')) || [];
+let playerName = localStorage.getItem('aeroPlayerName') || "";
 
-// UI Hooks
-document.getElementById('slider-sens').addEventListener('input', e => config.rotationSensitivity = parseFloat(e.target.value));
-document.getElementById('slider-boost').addEventListener('input', e => config.boostPower = parseFloat(e.target.value));
-document.getElementById('slider-weight').addEventListener('input', e => config.gravity = parseFloat(e.target.value));
-document.getElementById('slider-friction').addEventListener('input', e => config.friction = parseFloat(e.target.value));
-
-document.getElementById('color-blue').addEventListener('input', e => {
-    config.colors.blue = e.target.value;
-    if (player1) player1.color = e.target.value;
-    document.getElementById('score-blue').style.color = e.target.value;
-    document.getElementById('p1-name').style.color = e.target.value;
-});
-document.getElementById('color-orange').addEventListener('input', e => {
-    config.colors.orange = e.target.value;
-    if (player2) player2.color = e.target.value;
-    document.getElementById('score-orange').style.color = e.target.value;
-    document.getElementById('p2-name').style.color = e.target.value;
-});
-
-document.getElementById('settings-toggle').onclick = () => {
-    const p = document.getElementById('settings-panel');
-    p.style.display = p.style.display === 'block' ? 'none' : 'block';
-    document.getElementById('leaderboard-panel').style.display = 'none';
+// UI Init
+const nameInput = document.getElementById('leaderboard-name-input');
+nameInput.value = playerName;
+document.getElementById('save-name-btn').onclick = () => {
+    playerName = nameInput.value.trim();
+    localStorage.setItem('aeroPlayerName', playerName);
+    updateLeaderboardUI();
 };
-
 document.getElementById('leaderboard-toggle').onclick = () => {
     const p = document.getElementById('leaderboard-panel');
     p.style.display = p.style.display === 'block' ? 'none' : 'block';
     document.getElementById('settings-panel').style.display = 'none';
     updateLeaderboardUI();
 };
-
-document.getElementById('save-name-btn').onclick = () => {
-    const nameInput = document.getElementById('player-name-input');
-    const name = nameInput.value.trim() || `Player ${Math.floor(Math.random() * 9000) + 1000}`;
-    if (pendingScore !== null) {
-        leaderboard.push({ name: name, score: pendingScore });
-        leaderboard.sort((a, b) => b.score - a.score);
-        leaderboard = leaderboard.slice(0, 10);
-        localStorage.setItem('aeroLeaderboard', JSON.stringify(leaderboard));
-        pendingScore = null;
-    }
-    document.getElementById('name-input-overlay').style.display = 'none';
-    updateLeaderboardUI();
+document.getElementById('settings-toggle').onclick = () => {
+    const p = document.getElementById('settings-panel');
+    p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    document.getElementById('leaderboard-panel').style.display = 'none';
 };
+
+// Sliders
+document.getElementById('slider-sens').addEventListener('input', e => config.rotationSensitivity = parseFloat(e.target.value));
+document.getElementById('slider-boost').addEventListener('input', e => config.boostPower = parseFloat(e.target.value));
+document.getElementById('slider-weight').addEventListener('input', e => config.gravity = parseFloat(e.target.value));
+document.getElementById('slider-friction').addEventListener('input', e => config.friction = parseFloat(e.target.value));
+document.getElementById('color-blue').addEventListener('input', e => {
+    config.colors.blue = e.target.value; if (player1) player1.color = e.target.value;
+    document.getElementById('score-blue').style.color = e.target.value; document.getElementById('p1-name').style.color = e.target.value;
+});
+document.getElementById('color-orange').addEventListener('input', e => {
+    config.colors.orange = e.target.value; if (player2) player2.color = e.target.value;
+    document.getElementById('score-orange').style.color = e.target.value; document.getElementById('p2-name').style.color = e.target.value;
+});
 
 function updateLeaderboardUI() {
     const list = document.getElementById('leaderboard-list');
-    list.innerHTML = leaderboard.map((entry, i) => `
-        <div class="leaderboard-entry">
-            <span>${i + 1}. ${entry.name}</span>
-            <span style="color: #fff">${entry.score.toFixed(2)}s</span>
-        </div>
-    `).join('') || '<div style="color: #444; text-align: center;">No records yet</div>';
+    list.innerHTML = leaderboard.map((entry, i) => `<div class="leaderboard-entry"><span>${i + 1}. ${entry.name}</span><span style="color: #fff">${entry.score.toFixed(2)}s</span></div>`).join('') || '<div style="color: #444; text-align: center;">No records yet</div>';
 }
 
 function checkDribbleRecord(score) {
     if (score > 5) {
-        pendingScore = score;
-        document.getElementById('score-display').innerText = `You dribbled for ${score.toFixed(2)} seconds!`;
-        document.getElementById('name-input-overlay').style.display = 'flex';
+        const finalName = playerName || `Player ${Math.floor(Math.random() * 9000) + 1000}`;
+        leaderboard.push({ name: finalName, score: score });
+        leaderboard.sort((a, b) => b.score - a.score);
+        leaderboard = leaderboard.slice(0, 10);
+        localStorage.setItem('aeroLeaderboard', JSON.stringify(leaderboard));
     }
 }
 
@@ -386,209 +316,89 @@ class Vector2D {
 
 class Entity {
     constructor(x, y, radius, mass, color) {
-        this.pos = new Vector2D(x, y);
-        this.vel = new Vector2D(0, 0);
-        this.acc = new Vector2D(0, 0);
-        this.radius = radius;
-        this.mass = mass;
-        this.color = color;
-        this.onSurface = false;
+        this.pos = new Vector2D(x, y); this.vel = new Vector2D(0, 0); this.acc = new Vector2D(0, 0);
+        this.radius = radius; this.mass = mass; this.color = color; this.onSurface = false;
     }
-    applyForce(f) {
-        this.acc.x += f.x / this.mass;
-        this.acc.y += f.y / this.mass;
-    }
+    applyForce(f) { this.acc.x += f.x / this.mass; this.acc.y += f.y / this.mass; }
     update(ts) {
         this.applyForce(new Vector2D(0, config.gravity * this.mass));
-        this.vel.x += (this.acc.x * ts);
-        this.vel.y += (this.acc.y * ts);
+        this.vel.x += (this.acc.x * ts); this.vel.y += (this.acc.y * ts);
         this.vel.mult(Math.pow(config.friction, ts));
-        this.pos.x += (this.vel.x * ts);
-        this.pos.y += (this.vel.y * ts);
-        this.acc.mult(0);
-        this.onSurface = false;
+        this.pos.x += (this.vel.x * ts); this.pos.y += (this.vel.y * ts);
+        this.acc.mult(0); this.onSurface = false;
     }
 }
 
 class Player extends Entity {
     constructor(x, y, color, controls) {
         super(x, y, config.playerRadius, 1.0, color);
-        this.controls = controls;
-        this.currentAngle = color === config.colors.blue ? 0 : Math.PI;
-        this.targetAngle = this.currentAngle;
-        this.boost = 112; 
-        this.isRecharging = false;
-        this.pulse = 0;
-        this.isTouchingWall = false;
-        this.jumping = false;
-        this.hasJump = true; 
-        this.jumpCooldown = 0;
+        this.controls = controls; this.currentAngle = color === config.colors.blue ? 0 : Math.PI;
+        this.targetAngle = this.currentAngle; this.boost = 112; this.isRecharging = false;
+        this.pulse = 0; this.isTouchingWall = false; this.jumping = false; this.hasJump = true; this.jumpCooldown = 0;
     }
-
     handleInput(ts) {
         let dx = 0, dy = 0;
-        if (keys[this.controls.up]) dy -= 1;
-        if (keys[this.controls.down]) dy += 1;
-        if (keys[this.controls.left]) dx -= 1;
-        if (keys[this.controls.right]) dx += 1;
-
-        if (dx !== 0 || dy !== 0) {
-            this.targetAngle = Math.atan2(dy, dx);
-        }
-
+        if (keys[this.controls.up]) dy -= 1; if (keys[this.controls.down]) dy += 1;
+        if (keys[this.controls.left]) dx -= 1; if (keys[this.controls.right]) dx += 1;
+        if (dx !== 0 || dy !== 0) this.targetAngle = Math.atan2(dy, dx);
         let diff = this.targetAngle - this.currentAngle;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2; while (diff > Math.PI) diff -= Math.PI * 2;
         this.currentAngle += diff * config.rotationSensitivity * ts;
-
         if (this.jumpCooldown > 0) this.jumpCooldown -= ts;
-
         if (dx !== 0) {
-            if (this.isTouchingWall) {
-                this.applyForce(new Vector2D(dx * config.enginePower, 0));
-            } else {
-                this.applyForce(new Vector2D(dx * config.enginePower * 0.3, 0));
-            }
+            if (this.isTouchingWall) this.applyForce(new Vector2D(dx * config.enginePower, 0));
+            else this.applyForce(new Vector2D(dx * config.enginePower * 0.3, 0));
         }
-
         if (keys[this.controls.boost] && this.boost > 0) {
-            this.isRecharging = false; 
-            const multiplier = this.isTouchingWall ? 1.0 : 0.9;
+            this.isRecharging = false; const multiplier = this.isTouchingWall ? 1.0 : 0.9;
             const force = new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(config.boostPower * multiplier);
-            this.applyForce(force);
-            this.boost -= 0.4 * ts; 
-            this.createBoostFlame();
-        } else if (this.isTouchingWall) {
-            this.isRecharging = true;
-        }
-
-        if (this.isRecharging) {
-            this.boost = Math.min(112, this.boost + 1.35 * ts);
-        }
-
+            this.applyForce(force); this.boost -= 0.4 * ts; this.createBoostFlame();
+        } else if (this.isTouchingWall) this.isRecharging = true;
+        if (this.isRecharging) this.boost = Math.min(112, this.boost + 1.35 * ts);
         if (this.isTouchingWall) this.hasJump = true;
-
         if (keys[this.controls.jump] && !this.jumping && this.hasJump && this.jumpCooldown <= 0) {
             const jumpForce = new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(5.5);
-            this.applyForce(jumpForce);
-            this.jumping = true;
-            this.hasJump = false; 
-            this.jumpCooldown = 30; 
+            this.applyForce(jumpForce); this.jumping = true; this.hasJump = false; this.jumpCooldown = 30;
             effects.push(new JumpAura(this.pos.x, this.pos.y));
         }
         if (!keys[this.controls.jump]) this.jumping = false;
     }
-
     createBoostFlame() {
         const backAngle = this.currentAngle + Math.PI;
         for (let i = 0; i < 2; i++) {
             const angle = backAngle + (Math.random() - 0.5) * 0.4;
             const speed = 2 + Math.random() * 3;
-            particles.push(new Particle(
-                this.pos.x + Math.cos(backAngle) * this.radius,
-                this.pos.y + Math.sin(backAngle) * this.radius,
-                this.color,
-                new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed),
-                'spike'
-            ));
+            particles.push(new Particle(this.pos.x + Math.cos(backAngle) * this.radius, this.pos.y + Math.sin(backAngle) * this.radius, this.color, new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed), 'spike'));
         }
     }
-
     draw() {
-        ctx.save();
-        ctx.translate(this.pos.x, this.pos.y);
-        ctx.rotate(this.currentAngle);
-
-        if (this.pulse > 0) {
-            ctx.beginPath();
-            ctx.arc(0, 0, this.radius + (20 - this.pulse), 0, Math.PI * 2);
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2.5;
-            ctx.stroke();
-            this.pulse--;
-        }
-
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(this.radius * 0.6, 0);
-        ctx.lineTo(-this.radius * 0.3, this.radius * 0.4);
-        ctx.lineTo(-this.radius * 0.3, -this.radius * 0.4);
-        ctx.closePath();
-        ctx.fillStyle = config.colors.bg;
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius * 0.85, 0.75 * Math.PI, 1.25 * Math.PI);
-        ctx.strokeStyle = config.colors.bg;
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.currentAngle);
+        if (this.pulse > 0) { ctx.beginPath(); ctx.arc(0, 0, this.radius + (20 - this.pulse), 0, Math.PI * 2); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke(); this.pulse--; }
+        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill();
+        ctx.beginPath(); ctx.moveTo(this.radius * 0.6, 0); ctx.lineTo(-this.radius * 0.3, this.radius * 0.4); ctx.lineTo(-this.radius * 0.3, -this.radius * 0.4); ctx.closePath(); ctx.fillStyle = config.colors.bg; ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.85, 0.75 * Math.PI, 1.25 * Math.PI); ctx.strokeStyle = config.colors.bg; ctx.lineWidth = 2.5; ctx.stroke();
         ctx.restore();
     }
 }
 
 class Ball extends Entity {
-    constructor(x, y) { super(x, y, config.ballRadius, 0.35, config.colors.ball); } 
+    constructor(x, y) { super(x, y, config.ballRadius, 0.35, config.colors.ball); }
     draw() {
-        ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(this.pos.x - this.radius, this.pos.y); ctx.lineTo(this.pos.x + this.radius, this.pos.y);
-        ctx.moveTo(this.pos.x, this.pos.y - this.radius); ctx.lineTo(this.pos.x, this.pos.y + this.radius);
-        ctx.stroke();
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill();
+        ctx.strokeStyle = '#ddd'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(this.pos.x - this.radius, this.pos.y); ctx.lineTo(this.pos.x + this.radius, this.pos.y); ctx.moveTo(this.pos.x, this.pos.y - this.radius); ctx.lineTo(this.pos.x, this.pos.y + this.radius); ctx.stroke();
     }
 }
 
 class Particle {
-    constructor(x, y, color, vel, type = 'circle') {
-        this.pos = new Vector2D(x, y);
-        this.vel = vel;
-        this.life = 1.0;
-        this.color = color;
-        this.type = type;
-    }
-    update(ts) { 
-        this.pos.x += this.vel.x * ts;
-        this.pos.y += this.vel.y * ts;
-        this.life -= 0.035 * ts; 
-    }
-    draw() {
-        ctx.globalAlpha = Math.max(0, this.life);
-        ctx.beginPath();
-        if (this.type === 'spike') {
-            ctx.moveTo(this.pos.x, this.pos.y);
-            ctx.lineTo(this.pos.x - this.vel.x * 2.5, this.pos.y - this.vel.y * 2.5);
-            ctx.strokeStyle = this.color; ctx.lineWidth = 2; ctx.stroke();
-        } else {
-            ctx.arc(this.pos.x, this.pos.y, 3, 0, Math.PI * 2);
-            ctx.fillStyle = this.color; ctx.fill();
-        }
-        ctx.globalAlpha = 1;
-    }
+    constructor(x, y, color, vel, type = 'circle') { this.pos = new Vector2D(x, y); this.vel = vel; this.life = 1.0; this.color = color; this.type = type; }
+    update(ts) { this.pos.x += this.vel.x * ts; this.pos.y += this.vel.y * ts; this.life -= 0.035 * ts; }
+    draw() { ctx.globalAlpha = Math.max(0, this.life); ctx.beginPath(); if (this.type === 'spike') { ctx.moveTo(this.pos.x, this.pos.y); ctx.lineTo(this.pos.x - this.vel.x * 2.5, this.pos.y - this.vel.y * 2.5); ctx.strokeStyle = this.color; ctx.lineWidth = 2; ctx.stroke(); } else { ctx.arc(this.pos.x, this.pos.y, 3, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); } ctx.globalAlpha = 1; }
 }
 
 class JumpAura {
     constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; }
-    draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, 8 + (1 - this.life) * 45, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(255, 255, 255, ${this.life * 0.4})`;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        this.life -= 0.06;
-    }
+    draw() { ctx.beginPath(); ctx.arc(this.x, this.y, 8 + (1 - this.life) * 45, 0, Math.PI * 2); ctx.strokeStyle = `rgba(255, 255, 255, ${this.life * 0.4})`; ctx.lineWidth = 1.5; ctx.stroke(); this.life -= 0.06; }
 }
-
-let player1, player2, ball, posts = [];
-let p1Joined = false;
-let p2Joined = false;
 
 function init() {
     const winW = window.innerWidth, winH = window.innerHeight;
@@ -600,27 +410,13 @@ function init() {
     resetPositions();
 }
 
-let countdown = 0;
-const countdownMsgEl = document.getElementById('countdown-msg');
-
 function resetPositions() {
     const groundY = arenaY + arenaHeight - config.playerRadius;
-    player1 = new Player(arenaX + 150, groundY, config.colors.blue, {
-        up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'KeyT', boost: 'KeyR'
-    });
-    player2 = new Player(arenaX + arenaWidth - 150, groundY, config.colors.orange, {
-        up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', jump: 'Period', boost: 'Comma'
-    });
+    player1 = new Player(arenaX + 150, groundY, config.colors.blue, { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'KeyT', boost: 'KeyR' });
+    player2 = new Player(arenaX + arenaWidth - 150, groundY, config.colors.orange, { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', jump: 'Period', boost: 'Comma' });
     ball = new Ball(arenaX + arenaWidth / 2, arenaY + (arenaHeight * 2/3));
-    player1.vel = new Vector2D(0, 0);
-    player2.vel = new Vector2D(0, 0);
-    ball.vel = new Vector2D(0, 0);
-    posts = [
-        { x: arenaX, y: arenaY + arenaHeight / 2 - config.goalHeight / 2 },
-        { x: arenaX, y: arenaY + arenaHeight / 2 + config.goalHeight / 2 },
-        { x: arenaX + arenaWidth, y: arenaY + arenaHeight / 2 - config.goalHeight / 2 },
-        { x: arenaX + arenaWidth, y: arenaY + arenaHeight / 2 + config.goalHeight / 2 }
-    ];
+    player1.vel = new Vector2D(0, 0); player2.vel = new Vector2D(0, 0); ball.vel = new Vector2D(0, 0);
+    posts = [{ x: arenaX, y: arenaY + arenaHeight / 2 - config.goalHeight / 2 }, { x: arenaX, y: arenaY + arenaHeight / 2 + config.goalHeight / 2 }, { x: arenaX + arenaWidth, y: arenaY + arenaHeight / 2 - config.goalHeight / 2 }, { x: arenaX + arenaWidth, y: arenaY + arenaHeight / 2 + config.goalHeight / 2 }];
 }
 
 function resolveCollision(a, b) {
@@ -628,20 +424,13 @@ function resolveCollision(a, b) {
     const minDist = a.radius + b.radius;
     if (d < minDist) {
         if (a instanceof Player && b instanceof Ball) {
-            currentDribbler = a; 
+            currentDribbler = a;
             const angleToBall = Math.atan2(b.pos.y - a.pos.y, b.pos.x - a.pos.x);
             let backAngle = a.currentAngle + Math.PI;
-            while (backAngle < -Math.PI) backAngle += Math.PI * 2;
-            while (backAngle > Math.PI) backAngle -= Math.PI * 2;
+            while (backAngle < -Math.PI) backAngle += Math.PI * 2; while (backAngle > Math.PI) backAngle -= Math.PI * 2;
             let diff = Math.abs(angleToBall - backAngle);
             if (diff > Math.PI) diff = Math.PI * 2 - diff;
-            if (diff < 0.65) { 
-                if (a.boost < 112 || !a.hasJump) { 
-                    a.boost = 112; 
-                    a.hasJump = true; 
-                    a.pulse = 20; 
-                } 
-            }
+            if (diff < 0.65) { if (a.boost < 112 || !a.hasJump) { a.boost = 112; a.hasJump = true; a.pulse = 20; } }
         }
         const nx = (b.pos.x - a.pos.x) / d, ny = (b.pos.y - a.pos.y) / d;
         const overlap = minDist - d;
@@ -650,11 +439,7 @@ function resolveCollision(a, b) {
         b.pos.x += nx * overlap * (a.mass / totalMass); b.pos.y += ny * overlap * (a.mass / totalMass);
         const relVelX = b.vel.x - a.vel.x, relVelY = b.vel.y - a.vel.y;
         const dot = relVelX * nx + relVelY * ny;
-        if (dot < 0) {
-            const impulse = (2 * dot) / totalMass;
-            a.vel.x += impulse * b.mass * nx * config.restitution; a.vel.y += impulse * b.mass * ny * config.restitution;
-            b.vel.x -= impulse * a.mass * nx * config.restitution; b.vel.y -= impulse * a.mass * ny * config.restitution;
-        }
+        if (dot < 0) { const impulse = (2 * dot) / totalMass; a.vel.x += impulse * b.mass * nx * 1.15; a.vel.y += impulse * b.mass * ny * 1.15; b.vel.x -= impulse * a.mass * nx * 1.15; b.vel.y -= impulse * a.mass * ny * 1.15; }
     }
 }
 
@@ -663,142 +448,70 @@ function checkWallCollision(e) {
     const r = e.radius, cr = config.cornerRadius;
     const gT = arenaY + arenaHeight/2 - config.goalHeight/2, gB = arenaY + arenaHeight/2 + config.goalHeight/2;
     const inGoalY = (e.pos.y > gT && e.pos.y < gB);
-    
     let res = 0.88;
     if (e instanceof Player) e.isTouchingWall = false;
-
-    if (e.pos.y > bottom - r) { 
-        e.pos.y = bottom - r; 
-        e.vel.y *= -res; 
-        if (e instanceof Player) { e.isTouchingWall = true; e.onSurface = true; }
-        if (e instanceof Ball) e.onSurface = true;
-    }
+    if (e.pos.y > bottom - r) { e.pos.y = bottom - r; e.vel.y *= -res; if (e instanceof Player) { e.isTouchingWall = true; e.onSurface = true; } if (e instanceof Ball) e.onSurface = true; }
     if (e.pos.y < top + r) { e.pos.y = top + r; e.vel.y *= -res; if (e instanceof Player) e.isTouchingWall = true; }
-
     if (e.pos.x < left || e.pos.x > right) {
         if (inGoalY) {
             const gw = config.goalWidth;
-            if (e.pos.x - r < left - gw) { e.pos.x = left - gw + r; e.vel.x *= -res; }
-            if (e.pos.x + r > right + gw) { e.pos.x = right + gw - r; e.vel.x *= -res; }
-            if (e.pos.y - r < gT) { e.pos.y = gT + r; e.vel.y *= -res; }
-            if (e.pos.y + r > gB) { e.pos.y = gB - r; e.vel.y *= -res; }
+            if (e.pos.x - r < left - gw) { e.pos.x = left - gw + r; e.vel.x *= -res; } if (e.pos.x + r > right + gw) { e.pos.x = right + gw - r; e.vel.x *= -res; }
+            if (e.pos.y - r < gT) { e.pos.y = gT + r; e.vel.y *= -res; } if (e.pos.y + r > gB) { e.pos.y = gB - r; e.vel.y *= -res; }
         } else {
-            if (e.pos.x < left) { e.pos.x = left + r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
-            if (e.pos.x > right) { e.pos.x = right - r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
+            if (e.pos.x < left) { e.pos.x = left + r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; } if (e.pos.x > right) { e.pos.x = right - r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
         }
     } else {
-        if (e.pos.x - r < left && !inGoalY) { e.pos.x = left + r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
-        if (e.pos.x + r > right && !inGoalY) { e.pos.x = right - r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
+        if (e.pos.x - r < left && !inGoalY) { e.pos.x = left + r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; } if (e.pos.x + r > right && !inGoalY) { e.pos.x = right - r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
     }
-
-    const corners = [
-        { x: left + cr, y: top + cr }, { x: right - cr, y: top + cr },
-        { x: left + cr, y: bottom - cr }, { x: right - cr, y: bottom - cr }
-    ];
+    const corners = [{ x: left + cr, y: top + cr }, { x: right - cr, y: top + cr }, { x: left + cr, y: bottom - cr }, { x: right - cr, y: bottom - cr }];
     corners.forEach(c => {
         const d = e.pos.dist(c);
         if (d > cr - r) {
-            const isCorner = (c.x === left + cr && e.pos.x < c.x && (c.y === top + cr ? e.pos.y < c.y : e.pos.y > c.y)) ||
-                             (c.x === right - cr && e.pos.x > c.x && (c.y === top + cr ? e.pos.y < c.y : e.pos.y > c.y));
-            if (isCorner) {
-                const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d;
-                e.pos.x = c.x + nx * (cr - r); e.pos.y = c.y + ny * (cr - r);
-                const dot = e.vel.x * nx + e.vel.y * ny;
-                if (dot > 0) { e.vel.x -= 2 * dot * nx * res; e.vel.y -= 2 * dot * ny * res; }
-                if (e instanceof Player) e.isTouchingWall = true;
-            }
+            const isCorner = (c.x === left + cr && e.pos.x < c.x && (c.y === top + cr ? e.pos.y < c.y : e.pos.y > c.y)) || (c.x === right - cr && e.pos.x > c.x && (c.y === top + cr ? e.pos.y < c.y : e.pos.y > c.y));
+            if (isCorner) { const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d; e.pos.x = c.x + nx * (cr - r); e.pos.y = c.y + ny * (cr - r); const dot = e.vel.x * nx + e.vel.y * ny; if (dot > 0) { e.vel.x -= 2 * dot * nx * res; e.vel.y -= 2 * dot * ny * res; } if (e instanceof Player) e.isTouchingWall = true; }
         }
     });
-
     posts.forEach(p => {
-        const dx = Math.abs(e.pos.x - p.x);
-        const dy = Math.abs(e.pos.y - p.y);
-        if (dx < r && dy < r) {
-            if (dx > dy) { e.pos.x = p.x + (e.pos.x > p.x ? r : -r); e.vel.x *= -res; }
-            else { e.pos.y = p.y + (e.pos.y > p.y ? r : -r); e.vel.y *= -res; }
-            if (e instanceof Player) e.isTouchingWall = true;
-        }
+        const dx = Math.abs(e.pos.x - p.x); const dy = Math.abs(e.pos.y - p.y);
+        if (dx < r && dy < r) { if (dx > dy) { e.pos.x = p.x + (e.pos.x > p.x ? r : -r); e.vel.x *= -res; } else { e.pos.y = p.y + (e.pos.y > p.y ? r : -r); e.vel.y *= -res; } if (e instanceof Player) e.isTouchingWall = true; }
     });
-
-    if (e instanceof Ball && resetDelay <= 0 && countdown <= 0) {
-        if (e.pos.x + r < left && inGoalY) scoreGoal('orange');
-        else if (e.pos.x - r > right && inGoalY) scoreGoal('blue');
-    }
+    if (e instanceof Ball && resetDelay <= 0 && countdown <= 0) { if (e.pos.x + r < left && inGoalY) scoreGoal('orange'); else if (e.pos.x - r > right && inGoalY) scoreGoal('blue'); }
 }
 
-function hexToRgba(hex, alpha) {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
+function hexToRgba(hex, alpha) { const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16); return `rgba(${r}, ${g}, ${b}, ${alpha})`; }
 
 function scoreGoal(team) {
     if (resetDelay > 0 || countdown > 0) return;
     if (team === 'blue') scoreBlue++; else scoreOrange++;
     scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
-    shakeTime = 30; flashTime = 25; 
-    flashColor = team === 'blue' ? hexToRgba(config.colors.blue, 0.4) : hexToRgba(config.colors.orange, 0.4);
+    shakeTime = 30; flashTime = 25; flashColor = team === 'blue' ? hexToRgba(config.colors.blue, 0.4) : hexToRgba(config.colors.orange, 0.4);
     goalMsgEl.style.opacity = 1; timeScale = 0.15; resetDelay = 120; 
     const explosionColor = team === 'blue' ? config.colors.blue : config.colors.orange;
-    for (let i = 0; i < 80; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = 5 + Math.random() * 15;
-        particles.push(new Particle(ball.pos.x, ball.pos.y, explosionColor, new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed), Math.random() > 0.5 ? 'spike' : 'circle'));
-    }
+    for (let i = 0; i < 80; i++) { const angle = Math.random() * Math.PI * 2; const speed = 5 + Math.random() * 15; particles.push(new Particle(ball.pos.x, ball.pos.y, explosionColor, new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed), Math.random() > 0.5 ? 'spike' : 'circle')); }
 }
 
-function startCountdown() {
-    countdown = 180;
-    countdownMsgEl.style.display = 'block';
-}
+function startCountdown() { countdown = 180; countdownMsgEl.style.display = 'block'; }
 
 function update() {
     const ts = timeScale;
-    if (!p1Joined && keys['KeyW']) {
-        p1Joined = true; document.getElementById('p1-join').style.display = 'none'; document.getElementById('p1-controls').style.display = 'block';
-    }
-    if (!p2Joined && keys['ArrowUp']) {
-        p2Joined = true; document.getElementById('p2-join').style.display = 'none'; document.getElementById('p2-controls').style.display = 'block';
-    }
-    
-    if (resetDelay > 0) {
-        resetDelay--;
-        if (resetDelay <= 0) {
-            timeScale = 1.0; goalMsgEl.style.opacity = 0; resetPositions(); startCountdown();
-        }
-    }
-
-    if (countdown > 0) {
-        countdown--;
-        const seconds = Math.ceil(countdown / 60);
-        countdownMsgEl.innerText = seconds > 0 ? seconds : "GO!";
-        if (countdown <= 0) setTimeout(() => { countdownMsgEl.style.display = 'none'; }, 500);
-    }
-
+    if (!p1Joined && keys['KeyW']) { p1Joined = true; document.getElementById('p1-join').style.display = 'none'; document.getElementById('p1-controls').style.display = 'block'; }
+    if (!p2Joined && keys['ArrowUp']) { p2Joined = true; document.getElementById('p2-join').style.display = 'none'; document.getElementById('p2-controls').style.display = 'block'; }
+    if (resetDelay > 0) { resetDelay--; if (resetDelay <= 0) { timeScale = 1.0; goalMsgEl.style.opacity = 0; resetPositions(); startCountdown(); } }
+    if (countdown > 0) { countdown--; const seconds = Math.ceil(countdown / 60); countdownMsgEl.innerText = seconds > 0 ? seconds : "GO!"; if (countdown <= 0) setTimeout(() => { countdownMsgEl.style.display = 'none'; }, 500); }
     if (resetDelay <= 0 && countdown <= 0) {
-        if (p1Joined) player1.handleInput(ts);
-        if (p2Joined) player2.handleInput(ts);
-        if (p1Joined) player1.update(ts);
-        if (p2Joined) player2.update(ts);
-        ball.update(ts);
-        if (p1Joined) checkWallCollision(player1);
-        if (p2Joined) checkWallCollision(player2);
-        checkWallCollision(ball);
-        if (p1Joined) resolveCollision(player1, ball);
-        if (p2Joined) resolveCollision(player2, ball);
+        if (p1Joined) player1.handleInput(ts); if (p2Joined) player2.handleInput(ts);
+        if (p1Joined) player1.update(ts); if (p2Joined) player2.update(ts); ball.update(ts);
+        if (p1Joined) checkWallCollision(player1); if (p2Joined) checkWallCollision(player2); checkWallCollision(ball);
+        if (p1Joined) resolveCollision(player1, ball); if (p2Joined) resolveCollision(player2, ball);
         if (p1Joined && p2Joined) resolveCollision(player1, player2);
 
-        if (!ball.onSurface && currentDribbler) {
+        // STRICT AIR DRIBBLE LOGIC
+        if (!ball.onSurface && currentDribbler && !currentDribbler.isTouchingWall) {
             dribbleTime += (1 / 60) * ts;
-            if (currentDribbler.isTouchingWall) {
-                wallTime += (1 / 60) * ts;
-                if (wallTime > 1.0) { checkDribbleRecord(dribbleTime); dribbleTime = 0; currentDribbler = null; }
-            } else { wallTime = 0; }
             if (dribbleTime > 5) { timerEl.style.display = 'block'; timerEl.innerText = dribbleTime.toFixed(2) + 's'; }
         } else {
             if (dribbleTime > 0) checkDribbleRecord(dribbleTime);
-            dribbleTime = 0; wallTime = 0; timerEl.style.display = 'none';
+            dribbleTime = 0; currentDribbler = null; timerEl.style.display = 'none';
         }
     }
     particles.forEach(p => p.update(ts));
@@ -809,47 +522,17 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (flashTime > 0) { ctx.fillStyle = flashColor; ctx.fillRect(0, 0, canvas.width, canvas.height); flashTime--; }
-    ctx.save();
-    if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); shakeTime--; }
+    ctx.save(); if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); shakeTime--; }
     const lx = arenaX, rx = arenaX + arenaWidth, ty = arenaY, by = arenaY + arenaHeight, cr = config.cornerRadius;
     const gT = ty + arenaHeight/2 - config.goalHeight/2, gB = ty + arenaHeight/2 + config.goalHeight/2, gw = config.goalWidth;
-
     ctx.fillStyle = hexToRgba(config.colors.blue, 0.2); ctx.fillRect(lx - gw, gT, gw, config.goalHeight);
     ctx.fillStyle = hexToRgba(config.colors.orange, 0.2); ctx.fillRect(rx, gT, gw, config.goalHeight);
     ctx.strokeStyle = config.colors.border; ctx.lineWidth = 6; ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(lx + cr, ty); ctx.lineTo(rx - cr, ty); ctx.arcTo(rx, ty, rx, ty + cr, cr);
-    ctx.lineTo(rx, gT); ctx.lineTo(rx + gw, gT); ctx.lineTo(rx + gw, gB); ctx.lineTo(rx, gB);
-    ctx.lineTo(rx, by - cr); ctx.arcTo(rx, by, rx - cr, by, cr);
-    ctx.lineTo(lx + cr, by); ctx.arcTo(lx, by, lx, by - cr, cr);
-    ctx.lineTo(lx, gB); ctx.lineTo(lx - gw, gB); ctx.lineTo(lx - gw, gT); ctx.lineTo(lx, gT);
-    ctx.lineTo(lx, ty + cr); ctx.arcTo(lx, ty, lx + cr, ty, cr);
-    ctx.stroke();
-
-    effects.forEach(e => e.draw());
-    if (p1Joined) player1.draw();
-    if (p2Joined) player2.draw();
-    ball.draw();
-    particles.forEach(p => p.draw());
-
-    const gW = 12, gH = 180;
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    if (p1Joined) ctx.fillRect(40, canvas.height - 220, gW, gH);
-    if (p2Joined) ctx.fillRect(canvas.width - 52, canvas.height - 220, gW, gH);
-    if (p1Joined) {
-        ctx.fillStyle = config.colors.blue; ctx.fillRect(40, canvas.height - 40 - (player1.boost * 1.6), gW, player1.boost * 1.6);
-        if (player1.hasJump) {
-            ctx.beginPath(); ctx.arc(46, canvas.height - 235, 4, 0, Math.PI * 2);
-            ctx.fillStyle = "#fff"; ctx.shadowBlur = 10; ctx.shadowColor = config.colors.blue; ctx.fill(); ctx.shadowBlur = 0;
-        }
-    }
-    if (p2Joined) {
-        ctx.fillStyle = config.colors.orange; ctx.fillRect(canvas.width - 52, canvas.height - 40 - (player2.boost * 1.6), gW, player2.boost * 1.6);
-        if (player2.hasJump) {
-            ctx.beginPath(); ctx.arc(canvas.width - 46, canvas.height - 235, 4, 0, Math.PI * 2);
-            ctx.fillStyle = "#fff"; ctx.shadowBlur = 10; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0;
-        }
-    }
+    ctx.beginPath(); ctx.moveTo(lx + cr, ty); ctx.lineTo(rx - cr, ty); ctx.arcTo(rx, ty, rx, ty + cr, cr); ctx.lineTo(rx, gT); ctx.lineTo(rx + gw, gT); ctx.lineTo(rx + gw, gB); ctx.lineTo(rx, gB); ctx.lineTo(rx, by - cr); ctx.arcTo(rx, by, rx - cr, by, cr); ctx.lineTo(lx + cr, by); ctx.arcTo(lx, by, lx, by - cr, cr); ctx.lineTo(lx, gB); ctx.lineTo(lx - gw, gB); ctx.lineTo(lx - gw, gT); ctx.lineTo(lx, gT); ctx.lineTo(lx, ty + cr); ctx.arcTo(lx, ty, lx + cr, ty, cr); ctx.stroke();
+    effects.forEach(e => e.draw()); if (p1Joined) player1.draw(); if (p2Joined) player2.draw(); ball.draw(); particles.forEach(p => p.draw());
+    const gW = 12, gH = 180; ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    if (p1Joined) { ctx.fillRect(40, canvas.height - 220, gW, gH); ctx.fillStyle = config.colors.blue; ctx.fillRect(40, canvas.height - 40 - (player1.boost * 1.6), gW, player1.boost * 1.6); if (player1.hasJump) { ctx.beginPath(); ctx.arc(46, canvas.height - 235, 4, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 10; ctx.shadowColor = config.colors.blue; ctx.fill(); ctx.shadowBlur = 0; } }
+    if (p2Joined) { ctx.fillRect(canvas.width - 52, canvas.height - 220, gW, gH); ctx.fillStyle = config.colors.orange; ctx.fillRect(canvas.width - 52, canvas.height - 40 - (player2.boost * 1.6), gW, player2.boost * 1.6); if (player2.hasJump) { ctx.beginPath(); ctx.arc(canvas.width - 46, canvas.height - 235, 4, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 10; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0; } }
     ctx.restore();
 }
 
