@@ -295,9 +295,15 @@ let ballRadius, playerRadius;
 let settingsModified = false;
 let width, height, arenaWidth, arenaHeight, arenaX, arenaY;
 let scoreBlue = 0, scoreOrange = 0, shakeTime = 0, timeScale = 1.0, flashTime = 0, flashColor = '', resetDelay = 0;
-const particles = [], effects = [], keys = {};
-window.addEventListener('keydown', e => keys[e.code] = true);
-window.addEventListener('keyup', e => keys[e.code] = false);
+const particles = [], effects = [], localKeys = {}, remoteKeys = {};
+const keys = new Proxy(localKeys, {
+    get: (t, p) => t[p] || remoteKeys[p],
+    set: (t, p, v) => { t[p] = v; return true; },
+    ownKeys: (t) => Reflect.ownKeys(t),
+    getOwnPropertyDescriptor: (t, p) => Reflect.getOwnPropertyDescriptor(t, p)
+});
+window.addEventListener('keydown', e => { if (e.target.tagName === 'INPUT') return; localKeys[e.code] = true; });
+window.addEventListener('keyup', e => { if (e.target.tagName === 'INPUT') return; localKeys[e.code] = false; });
 
 // State & Leaderboard logic
 let player1, player2, ball, posts = [], p1Joined = false, p2Joined = false, countdown = 0;
@@ -322,6 +328,7 @@ document.getElementById('multiplayer-toggle').onclick = () => {
 document.getElementById('create-room-btn').onclick = () => {
     const roomID = roomInput.value.trim().toUpperCase();
     if (!roomID) return alert("Enter a Room ID");
+    for (const k in localKeys) localKeys[k] = false;
     currentRoom = roomID;
     isHost = true;
     socket.emit('joinRoom', roomID);
@@ -332,6 +339,7 @@ document.getElementById('create-room-btn').onclick = () => {
 document.getElementById('join-room-btn').onclick = () => {
     const roomID = roomInput.value.trim().toUpperCase();
     if (!roomID) return alert("Enter a Room ID");
+    for (const k in localKeys) localKeys[k] = false;
     currentRoom = roomID;
     isHost = false;
     socket.emit('joinRoom', roomID);
@@ -368,18 +376,15 @@ socket.on('gameStateUpdate', (state) => {
     scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
 });
 
-socket.on('remoteInput', (remoteKeys) => {
-    // Merge remote keys into local keys to simulate shared control
-    for (const key in remoteKeys) {
-        if (remoteKeys[key]) keys[key] = true;
-    }
+socket.on('remoteInput', (rk) => {
+    for (const key in rk) remoteKeys[key] = rk[key];
 });
 
 function syncMultiplayer() {
     if (!currentRoom) return;
     
     // Both players send their inputs to each other
-    socket.emit('playerInput', { roomID: currentRoom, keys: keys });
+    socket.emit('playerInput', { roomID: currentRoom, keys: localKeys });
 
     // Host sends authoritative physical state (normalized)
     if (isHost) {
