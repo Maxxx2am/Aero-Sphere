@@ -360,33 +360,49 @@ document.getElementById('join-room-btn').onclick = () => {
 socket.on('gameStateUpdate', (state) => {
     if (isHost) return; // Host is authoritative
     
-    // Position Smoothing (Lerp)
+    // Dead Reckoning: snap positions only if too far off (> 40px for ball, > 60px for players)
+    // Between packets the client runs local physics to fill the gaps smoothly
     if (ball) {
-        const lerpFactor = 0.25;
         const targetBallX = state.ball.x * arenaWidth + arenaX;
         const targetBallY = state.ball.y * arenaHeight + arenaY;
-        ball.pos.x += (targetBallX - ball.pos.x) * lerpFactor;
-        ball.pos.y += (targetBallY - ball.pos.y) * lerpFactor;
+        const distBall = Math.hypot(targetBallX - ball.pos.x, targetBallY - ball.pos.y);
+        if (distBall > 40) {
+            // Too far off - hard snap
+            ball.pos.x = targetBallX;
+            ball.pos.y = targetBallY;
+        }
+        // Always sync velocity so local simulation stays accurate
         ball.vel.x = state.ball.vx * gameScale;
         ball.vel.y = state.ball.vy * gameScale;
     }
     if (player1) {
-        const lerpFactor = 0.3;
         const targetP1X = state.p1.x * arenaWidth + arenaX;
         const targetP1Y = state.p1.y * arenaHeight + arenaY;
-        player1.pos.x += (targetP1X - player1.pos.x) * lerpFactor;
-        player1.pos.y += (targetP1Y - player1.pos.y) * lerpFactor;
+        const distP1 = Math.hypot(targetP1X - player1.pos.x, targetP1Y - player1.pos.y);
+        if (distP1 > 60) {
+            player1.pos.x = targetP1X;
+            player1.pos.y = targetP1Y;
+        } else {
+            // Gentle lerp for players (their movement is more predictable)
+            player1.pos.x += (targetP1X - player1.pos.x) * 0.5;
+            player1.pos.y += (targetP1Y - player1.pos.y) * 0.5;
+        }
         player1.vel.x = state.p1.vx * gameScale;
         player1.vel.y = state.p1.vy * gameScale;
         player1.currentAngle = state.p1.angle;
         player1.boost = state.p1.boost;
     }
     if (player2) {
-        const lerpFactor = 0.3;
         const targetP2X = state.p2.x * arenaWidth + arenaX;
         const targetP2Y = state.p2.y * arenaHeight + arenaY;
-        player2.pos.x += (targetP2X - player2.pos.x) * lerpFactor;
-        player2.pos.y += (targetP2Y - player2.pos.y) * lerpFactor;
+        const distP2 = Math.hypot(targetP2X - player2.pos.x, targetP2Y - player2.pos.y);
+        if (distP2 > 60) {
+            player2.pos.x = targetP2X;
+            player2.pos.y = targetP2Y;
+        } else {
+            player2.pos.x += (targetP2X - player2.pos.x) * 0.5;
+            player2.pos.y += (targetP2Y - player2.pos.y) * 0.5;
+        }
         player2.vel.x = state.p2.vx * gameScale;
         player2.vel.y = state.p2.vy * gameScale;
         player2.currentAngle = state.p2.angle;
@@ -462,10 +478,6 @@ socket.on('remoteInput', (rk) => {
 
 function syncMultiplayer() {
     if (!currentRoom) return;
-    
-    // Throttling: Send updates 20 times per second (every 3 frames)
-    syncTick++;
-    if (syncTick % 3 !== 0) return;
 
     socket.emit('playerInput', { roomID: currentRoom, keys: localKeys });
 
@@ -689,15 +701,19 @@ function update() {
 
     if (resetDelay <= 0 && countdown <= 0 && goTimer <= 0) {
         if (currentRoom && !isHost) {
-            // Client-side prediction for visual feel (angle only)
-            if (p2Joined) player2.handleInput(ts);
+            // CLIENT: run full local physics for smooth 60fps visuals
+            // Host state corrects us via dead reckoning in gameStateUpdate
+            if (p1Joined) { player1.update(ts); checkWallCollision(player1); }
+            if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); }
+            ball.update(ts);
+            checkWallCollision(ball);
         } else {
             // Host or Offline Mode
             if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); }
             if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); }
         }
         
-        // Physics Authority: Only host (or offline) handles ball movement and collisions
+        // Physics Authority: Only host (or offline) handles ball collisions and scoring
         if (isHost || !currentRoom) {
             ball.update(ts); 
             checkWallCollision(ball); 
