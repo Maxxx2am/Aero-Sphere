@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AERO-SPHERE V5 - PRO DRIBBLE</title>
+    <title>AERO-SPHERE V5 - GLOBAL</title>
     <style>
         body {
             margin: 0;
@@ -29,7 +29,7 @@
             position: absolute;
             top: 15px;
             left: 15px;
-            font-size: 60px; /* Massive score numbers */
+            font-size: 60px;
             font-weight: 900;
             color: #fff;
             background: rgba(0, 0, 0, 0.2);
@@ -259,10 +259,13 @@ const timerEl = document.getElementById('dribble-timer'), timerContainer = docum
 const settingsWarning = document.getElementById('settings-warning');
 
 const config = {
-    gravity: 0.07, friction: 0.982, restitution: 1.15, rotationSensitivity: 0.2, boostPower: 0.22, enginePower: 0.18, ballRadius: 18, playerRadius: 13, targetRatio: 1.8, goalWidth: 100, goalHeight: 220, cornerRadius: 80,
+    gravity: 0.07, friction: 0.982, restitution: 1.15, rotationSensitivity: 0.2, boostPower: 0.22, enginePower: 0.18, 
+    baseBallRadius: 18, basePlayerRadius: 13, targetRatio: 1.8, goalWidth: 100, goalHeight: 220, cornerRadius: 80,
     colors: { blue: '#0074D9', orange: '#FF851B', ball: '#FFFFFF', border: '#555555', bg: '#020202' }
 };
 
+let gameScale = 1.0;
+let ballRadius, playerRadius;
 let settingsModified = false;
 let width, height, arenaWidth, arenaHeight, arenaX, arenaY;
 let scoreBlue = 0, scoreOrange = 0, shakeTime = 0, timeScale = 1.0, flashTime = 0, flashColor = '', resetDelay = 0;
@@ -274,15 +277,38 @@ window.addEventListener('keyup', e => keys[e.code] = false);
 let player1, player2, ball, posts = [], p1Joined = false, p2Joined = false, countdown = 0;
 const countdownMsgEl = document.getElementById('countdown-msg');
 let currentDribbler = null, dribbleTime = 0, playerName = localStorage.getItem('aeroPlayerName') || "";
-let persistentLeaderboard = JSON.parse(localStorage.getItem('aeroLeaderboard')) || [];
-let sessionLeaderboard = [];
+let globalLeaderboard = [];
 
 function markModified() { settingsModified = true; settingsWarning.style.display = 'block'; }
 
 const nameInput = document.getElementById('leaderboard-name-input');
 nameInput.value = playerName;
+
+// API calls for Global Leaderboard
+async function fetchLeaderboard() {
+    try {
+        const response = await fetch('/api/leaderboard');
+        globalLeaderboard = await response.json();
+        updateLeaderboardUI();
+    } catch (err) { console.error("Failed to fetch global leaderboard:", err); }
+}
+
+async function checkDribbleRecord(score) {
+    if (score < 5 || settingsModified) return;
+    const finalName = playerName || `Player ${Math.floor(Math.random() * 9000) + 1000}`;
+    try {
+        const response = await fetch('/api/leaderboard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: finalName, score: score })
+        });
+        const data = await response.json();
+        if (data.success) { globalLeaderboard = data.leaderboard; updateLeaderboardUI(); }
+    } catch (err) { console.error("Failed to submit score:", err); }
+}
+
 document.getElementById('save-name-btn').onclick = () => { playerName = nameInput.value.trim(); localStorage.setItem('aeroPlayerName', playerName); updateLeaderboardUI(); };
-document.getElementById('leaderboard-toggle').onclick = () => { const p = document.getElementById('leaderboard-panel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; document.getElementById('settings-panel').style.display = 'none'; updateLeaderboardUI(); };
+document.getElementById('leaderboard-toggle').onclick = () => { const p = document.getElementById('leaderboard-panel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; document.getElementById('settings-panel').style.display = 'none'; fetchLeaderboard(); };
 document.getElementById('settings-toggle').onclick = () => { const p = document.getElementById('settings-panel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; document.getElementById('leaderboard-panel').style.display = 'none'; };
 document.getElementById('how-to-play-btn').onclick = () => document.getElementById('how-to-play-overlay').style.display = 'flex';
 document.getElementById('close-how-to').onclick = () => document.getElementById('how-to-play-overlay').style.display = 'none';
@@ -297,76 +323,73 @@ document.getElementById('color-blue').addEventListener('input', e => { config.co
 document.getElementById('color-orange').addEventListener('input', e => { config.colors.orange = e.target.value; if (player2) player2.color = e.target.value; document.getElementById('score-orange').style.color = e.target.value; document.getElementById('p2-name').style.color = e.target.value; });
 
 function updateLeaderboardUI(full = false) {
-    const merged = {};
-    [...persistentLeaderboard, ...sessionLeaderboard].forEach(entry => { if (!merged[entry.name] || entry.score > merged[entry.name].score) merged[entry.name] = entry; });
-    const combined = Object.values(merged).sort((a, b) => b.score - a.score);
+    const combined = globalLeaderboard.sort((a, b) => b.score - a.score);
     const list = document.getElementById(full ? 'full-leaderboard-list' : 'leaderboard-list');
     const displayList = full ? combined : combined.slice(0, 5);
     list.innerHTML = displayList.map((entry, i) => `<div class="leaderboard-entry"><span>${i + 1}. ${entry.name}</span><span style="color: #fff">${entry.score.toFixed(2)}s</span></div>`).join('') || '<div style="color: #444; text-align: center;">No records yet</div>';
 }
 
-function checkDribbleRecord(score) {
-    if (score < 5 || settingsModified) return;
-    const finalName = playerName || `Player ${Math.floor(Math.random() * 9000) + 1000}`;
-    const entry = { name: finalName, score: score };
-    const sessIdx = sessionLeaderboard.findIndex(e => e.name === finalName);
-    if (sessIdx !== -1) { if (score > sessionLeaderboard[sessIdx].score) sessionLeaderboard[sessIdx].score = score; } else sessionLeaderboard.push(entry);
-    if (playerName) {
-        const persIdx = persistentLeaderboard.findIndex(e => e.name === finalName);
-        if (persIdx !== -1) { if (score > persistentLeaderboard[persIdx].score) persistentLeaderboard[persIdx].score = score; } else persistentLeaderboard.push(entry);
-        persistentLeaderboard.sort((a, b) => b.score - a.score); persistentLeaderboard = persistentLeaderboard.slice(0, 50);
-        localStorage.setItem('aeroLeaderboard', JSON.stringify(persistentLeaderboard));
-    }
-    updateLeaderboardUI();
-}
-
-function getGlobalBest() { const combined = [...persistentLeaderboard, ...sessionLeaderboard]; return combined.length === 0 ? 0 : Math.max(...combined.map(e => e.score)); }
+function getGlobalBest() { if (globalLeaderboard.length === 0) return 0; return Math.max(...globalLeaderboard.map(e => e.score)); }
 
 class Vector2D { constructor(x = 0, y = 0) { this.x = x; this.y = y; } add(v) { this.x += v.x; this.y += v.y; return this; } sub(v) { return new Vector2D(this.x - v.x, this.y - v.y); } mult(n) { this.x *= n; this.y *= n; return this; } mag() { return Math.sqrt(this.x * this.x + this.y * this.y); } dist(v) { return Math.sqrt((this.x - v.x) ** 2 + (this.y - v.y) ** 2); } normalize() { const m = this.mag(); return m === 0 ? new Vector2D(0, 0) : new Vector2D(this.x / m, this.y / m); } dot(v) { return this.x * v.x + this.y * v.y; } }
 
 class Entity {
     constructor(x, y, radius, mass, color) { this.pos = new Vector2D(x, y); this.vel = new Vector2D(0, 0); this.acc = new Vector2D(0, 0); this.radius = radius; this.mass = mass; this.color = color; this.onSurface = false; }
     applyForce(f) { this.acc.x += f.x / this.mass; this.acc.y += f.y / this.mass; }
-    update(ts) { this.applyForce(new Vector2D(0, config.gravity * this.mass)); this.vel.x += (this.acc.x * ts); this.vel.y += (this.acc.y * ts); this.vel.mult(Math.pow(config.friction, ts)); this.pos.x += (this.vel.x * ts); this.pos.y += (this.vel.y * ts); this.acc.mult(0); this.onSurface = false; }
+    update(ts) { this.applyForce(new Vector2D(0, config.gravity * this.mass * gameScale)); this.vel.x += (this.acc.x * ts); this.vel.y += (this.acc.y * ts); this.vel.mult(Math.pow(config.friction, ts)); this.pos.x += (this.vel.x * ts); this.pos.y += (this.vel.y * ts); this.acc.mult(0); this.onSurface = false; }
 }
 
 class Player extends Entity {
-    constructor(x, y, color, controls) { super(x, y, config.playerRadius, 1.0, color); this.controls = controls; this.currentAngle = color === config.colors.blue ? 0 : Math.PI; this.targetAngle = this.currentAngle; this.boost = 112; this.isRecharging = false; this.pulse = 0; this.isTouchingWall = false; this.jumping = false; this.hasJump = true; this.jumpCooldown = 0; }
+    constructor(x, y, color, controls) { super(x, y, playerRadius, 1.0, color); this.controls = controls; this.currentAngle = color === config.colors.blue ? 0 : Math.PI; this.targetAngle = this.currentAngle; this.boost = 112; this.isRecharging = false; this.pulse = 0; this.isTouchingWall = false; this.jumping = false; this.hasJump = true; this.jumpCooldown = 0; }
     handleInput(ts) {
         let dx = 0, dy = 0; if (keys[this.controls.up]) dy -= 1; if (keys[this.controls.down]) dy += 1; if (keys[this.controls.left]) dx -= 1; if (keys[this.controls.right]) dx += 1;
         if (dx !== 0 || dy !== 0) this.targetAngle = Math.atan2(dy, dx);
         let diff = this.targetAngle - this.currentAngle; while (diff < -Math.PI) diff += Math.PI * 2; while (diff > Math.PI) diff -= Math.PI * 2;
         this.currentAngle += diff * config.rotationSensitivity * ts;
         if (this.jumpCooldown > 0) this.jumpCooldown -= ts;
-        if (dx !== 0) { if (this.isTouchingWall) this.applyForce(new Vector2D(dx * config.enginePower, 0)); else this.applyForce(new Vector2D(dx * config.enginePower * 0.3, 0)); }
-        if (keys[this.controls.boost] && this.boost > 0) { this.isRecharging = false; const multiplier = this.isTouchingWall ? 1.0 : 0.9; this.applyForce(new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(config.boostPower * multiplier)); this.boost -= 0.4 * ts; this.createBoostFlame(); } else if (this.isTouchingWall) this.isRecharging = true;
+        if (dx !== 0) { if (this.isTouchingWall) this.applyForce(new Vector2D(dx * config.enginePower * gameScale, 0)); else this.applyForce(new Vector2D(dx * config.enginePower * 0.3 * gameScale, 0)); }
+        if (keys[this.controls.boost] && this.boost > 0) { this.isRecharging = false; const multiplier = this.isTouchingWall ? 1.0 : 0.9; this.applyForce(new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(config.boostPower * multiplier * gameScale)); this.boost -= 0.4 * ts; this.createBoostFlame(); } else if (this.isTouchingWall) this.isRecharging = true;
         if (this.isRecharging) this.boost = Math.min(112, this.boost + 1.35 * ts);
         if (this.isTouchingWall) this.hasJump = true;
-        if (keys[this.controls.jump] && !this.jumping && this.hasJump && this.jumpCooldown <= 0) { this.applyForce(new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(5.5)); this.jumping = true; this.hasJump = false; this.jumpCooldown = 30; effects.push(new JumpAura(this.pos.x, this.pos.y)); }
+        if (keys[this.controls.jump] && !this.jumping && this.hasJump && this.jumpCooldown <= 0) { this.applyForce(new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(5.5 * gameScale)); this.jumping = true; this.hasJump = false; this.jumpCooldown = 30; effects.push(new JumpAura(this.pos.x, this.pos.y)); }
         if (!keys[this.controls.jump]) this.jumping = false;
     }
-    createBoostFlame() { const backAngle = this.currentAngle + Math.PI; for (let i = 0; i < 2; i++) { const angle = backAngle + (Math.random() - 0.5) * 0.4; const speed = 2 + Math.random() * 3; particles.push(new Particle(this.pos.x + Math.cos(backAngle) * this.radius, this.pos.y + Math.sin(backAngle) * this.radius, this.color, new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed), 'spike')); } }
+    createBoostFlame() { const backAngle = this.currentAngle + Math.PI; for (let i = 0; i < 2; i++) { const angle = backAngle + (Math.random() - 0.5) * 0.4; const speed = (2 + Math.random() * 3) * gameScale; particles.push(new Particle(this.pos.x + Math.cos(backAngle) * this.radius, this.pos.y + Math.sin(backAngle) * this.radius, this.color, new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed), 'spike')); } }
     draw() {
-        ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.currentAngle); if (this.pulse > 0) { ctx.beginPath(); ctx.arc(0, 0, this.radius + (20 - this.pulse), 0, Math.PI * 2); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke(); this.pulse--; } ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); ctx.beginPath(); ctx.moveTo(this.radius * 0.6, 0); ctx.lineTo(-this.radius * 0.3, this.radius * 0.4); ctx.lineTo(-this.radius * 0.3, -this.radius * 0.4); ctx.closePath(); ctx.fillStyle = config.colors.bg; ctx.fill(); ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.85, 0.75 * Math.PI, 1.25 * Math.PI); ctx.strokeStyle = config.colors.bg; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore();
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.currentAngle); if (this.pulse > 0) { ctx.beginPath(); ctx.arc(0, 0, this.radius + (20 - this.pulse) * gameScale, 0, Math.PI * 2); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5 * gameScale; ctx.stroke(); this.pulse--; } ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); ctx.beginPath(); ctx.moveTo(this.radius * 0.6, 0); ctx.lineTo(-this.radius * 0.3, this.radius * 0.4); ctx.lineTo(-this.radius * 0.3, -this.radius * 0.4); ctx.closePath(); ctx.fillStyle = config.colors.bg; ctx.fill(); ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.85, 0.75 * Math.PI, 1.25 * Math.PI); ctx.strokeStyle = config.colors.bg; ctx.lineWidth = 2.5 * gameScale; ctx.stroke(); ctx.restore();
     }
 }
 
 class Ball extends Entity {
-    constructor(x, y) { super(x, y, config.ballRadius, 0.35, config.colors.ball); }
+    constructor(x, y) { super(x, y, ballRadius, 0.35, config.colors.ball); }
     draw() {
-        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 15; ctx.shadowColor = "rgba(255, 255, 255, 0.5)"; ctx.fill(); ctx.shadowBlur = 0;
-        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius * 0.7, 0, Math.PI * 2); ctx.strokeStyle = "rgba(0, 0, 0, 0.15)"; ctx.lineWidth = 1; ctx.stroke();
-        ctx.beginPath(); ctx.strokeStyle = "rgba(0, 0, 0, 0.2)"; ctx.lineWidth = 2; for (let i = 0; i < 4; i++) { const angle = (i * Math.PI) / 2; ctx.moveTo(this.pos.x + Math.cos(angle) * (this.radius * 0.4), this.pos.y + Math.sin(angle) * (this.radius * 0.4)); ctx.lineTo(this.pos.x + Math.cos(angle) * this.radius, this.pos.y + Math.sin(angle) * this.radius); } ctx.stroke();
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 15 * gameScale; ctx.shadowColor = "rgba(255, 255, 255, 0.5)"; ctx.fill(); ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius * 0.7, 0, Math.PI * 2); ctx.strokeStyle = "rgba(0, 0, 0, 0.15)"; ctx.lineWidth = 1 * gameScale; ctx.stroke();
+        ctx.beginPath(); ctx.strokeStyle = "rgba(0, 0, 0, 0.2)"; ctx.lineWidth = 2 * gameScale; for (let i = 0; i < 4; i++) { const angle = (i * Math.PI) / 2; ctx.moveTo(this.pos.x + Math.cos(angle) * (this.radius * 0.4), this.pos.y + Math.sin(angle) * (this.radius * 0.4)); ctx.lineTo(this.pos.x + Math.cos(angle) * this.radius, this.pos.y + Math.sin(angle) * this.radius); } ctx.stroke();
         const grad = ctx.createRadialGradient(this.pos.x - this.radius * 0.3, this.pos.y - this.radius * 0.3, this.radius * 0.1, this.pos.x, this.pos.y, this.radius); grad.addColorStop(0, "rgba(255, 255, 255, 0.8)"); grad.addColorStop(0.5, "rgba(255, 255, 255, 0)"); grad.addColorStop(1, "rgba(0, 0, 0, 0.05)"); ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2); ctx.fillStyle = grad; ctx.fill();
     }
 }
 
-class Particle { constructor(x, y, color, vel, type = 'circle') { this.pos = new Vector2D(x, y); this.vel = vel; this.life = 1.0; this.color = color; this.type = type; } update(ts) { this.pos.x += this.vel.x * ts; this.pos.y += this.vel.y * ts; this.life -= 0.035 * ts; } draw() { ctx.globalAlpha = Math.max(0, this.life); ctx.beginPath(); if (this.type === 'spike') { ctx.moveTo(this.pos.x, this.pos.y); ctx.lineTo(this.pos.x - this.vel.x * 2.5, this.pos.y - this.vel.y * 2.5); ctx.strokeStyle = this.color; ctx.lineWidth = 2; ctx.stroke(); } else { ctx.arc(this.pos.x, this.pos.y, 3, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); } ctx.globalAlpha = 1; } }
-class JumpAura { constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; } draw() { ctx.beginPath(); ctx.arc(this.x, this.y, 8 + (1 - this.life) * 45, 0, Math.PI * 2); ctx.strokeStyle = `rgba(255, 255, 255, ${this.life * 0.4})`; ctx.lineWidth = 1.5; ctx.stroke(); this.life -= 0.06; } }
+class Particle { constructor(x, y, color, vel, type = 'circle') { this.pos = new Vector2D(x, y); this.vel = vel; this.life = 1.0; this.color = color; this.type = type; } update(ts) { this.pos.x += this.vel.x * ts; this.pos.y += this.vel.y * ts; this.life -= 0.035 * ts; } draw() { ctx.globalAlpha = Math.max(0, this.life); ctx.beginPath(); if (this.type === 'spike') { ctx.moveTo(this.pos.x, this.pos.y); ctx.lineTo(this.pos.x - this.vel.x * 2.5, this.pos.y - this.vel.y * 2.5); ctx.strokeStyle = this.color; ctx.lineWidth = 2 * gameScale; ctx.stroke(); } else { ctx.arc(this.pos.x, this.pos.y, 3 * gameScale, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); } ctx.globalAlpha = 1; } }
+class JumpAura { constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; } draw() { ctx.beginPath(); ctx.arc(this.x, this.y, (8 + (1 - this.life) * 45) * gameScale, 0, Math.PI * 2); ctx.strokeStyle = `rgba(255, 255, 255, ${this.life * 0.4})`; ctx.lineWidth = 1.5 * gameScale; ctx.stroke(); this.life -= 0.06; } }
 
-function init() { const winW = window.innerWidth, winH = window.innerHeight; if (winW / winH > config.targetRatio) { height = winH; width = height * config.targetRatio; } else { width = winW; height = width / config.targetRatio; } canvas.width = winW; canvas.height = winH; arenaWidth = width * 0.85; arenaHeight = height * 0.85; arenaX = (winW - arenaWidth) / 2; arenaY = (winH - arenaHeight) / 2; resetPositions(); }
+function init() {
+    const winW = window.innerWidth, winH = window.innerHeight;
+    if (winW / winH > config.targetRatio) { height = winH; width = height * config.targetRatio; } else { width = winW; height = width / config.targetRatio; }
+    gameScale = width / 1600; ballRadius = config.baseBallRadius * gameScale; playerRadius = config.basePlayerRadius * gameScale;
+    canvas.width = winW; canvas.height = winH; arenaWidth = width * 0.85; arenaHeight = height * 0.85; arenaX = (winW - arenaWidth) / 2; arenaY = (winH - arenaHeight) / 2;
+    resetPositions();
+}
 
-function resetPositions() { const groundY = arenaY + arenaHeight - config.playerRadius; player1 = new Player(arenaX + 150, groundY, config.colors.blue, { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'KeyT', boost: 'KeyR' }); player2 = new Player(arenaX + arenaWidth - 150, groundY, config.colors.orange, { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', jump: 'Period', boost: 'Comma' }); ball = new Ball(arenaX + arenaWidth / 2, arenaY + (arenaHeight * 2/3)); player1.vel = new Vector2D(0, 0); player2.vel = new Vector2D(0, 0); ball.vel = new Vector2D(0, 0); posts = [{ x: arenaX, y: arenaY + arenaHeight / 2 - config.goalHeight / 2 }, { x: arenaX, y: arenaY + arenaHeight / 2 + config.goalHeight / 2 }, { x: arenaX + arenaWidth, y: arenaY + arenaHeight / 2 - config.goalHeight / 2 }, { x: arenaX + arenaWidth, y: arenaY + arenaHeight / 2 + config.goalHeight / 2 }]; }
+function resetPositions() {
+    const groundY = arenaY + arenaHeight - playerRadius;
+    player1 = new Player(arenaX + (150 * gameScale), groundY, config.colors.blue, { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'KeyT', boost: 'KeyR' });
+    player2 = new Player(arenaX + arenaWidth - (150 * gameScale), groundY, config.colors.orange, { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', jump: 'Period', boost: 'Comma' });
+    ball = new Ball(arenaX + arenaWidth / 2, arenaY + (arenaHeight * 2/3));
+    player1.vel = new Vector2D(0, 0); player2.vel = new Vector2D(0, 0); ball.vel = new Vector2D(0, 0);
+    const midY = arenaY + arenaHeight/2, gh = (config.goalHeight * gameScale)/2;
+    posts = [{ x: arenaX, y: midY - gh }, { x: arenaX, y: midY + gh }, { x: arenaX + arenaWidth, y: midY - gh }, { x: arenaX + arenaWidth, y: midY + gh }];
+}
 
 function resolveCollision(a, b) {
     const d = a.pos.dist(b.pos), minDist = a.radius + b.radius;
@@ -380,12 +403,12 @@ function resolveCollision(a, b) {
 }
 
 function checkWallCollision(e) {
-    const left = arenaX, right = arenaX + arenaWidth, top = arenaY, bottom = arenaY + arenaHeight, r = e.radius, cr = config.cornerRadius, gT = arenaY + arenaHeight/2 - config.goalHeight/2, gB = arenaY + arenaHeight/2 + config.goalHeight/2;
+    const left = arenaX, right = arenaX + arenaWidth, top = arenaY, bottom = arenaY + arenaHeight, r = e.radius, cr = config.cornerRadius * gameScale, gH = config.goalHeight * gameScale, gT = arenaY + arenaHeight/2 - gH/2, gB = arenaY + arenaHeight/2 + gH/2;
     let res = 0.88; if (e instanceof Player) e.isTouchingWall = false;
     if (e.pos.y > bottom - r) { e.pos.y = bottom - r; e.vel.y *= -res; if (e instanceof Player) { e.isTouchingWall = true; e.onSurface = true; } if (e instanceof Ball) e.onSurface = true; }
     if (e.pos.y < top + r) { e.pos.y = top + r; e.vel.y *= -res; if (e instanceof Player) e.isTouchingWall = true; }
     if (e.pos.x < left || e.pos.x > right) {
-        if (e.pos.y > gT && e.pos.y < gB) { const gw = config.goalWidth; if (e.pos.x - r < left - gw) { e.pos.x = left - gw + r; e.vel.x *= -res; } if (e.pos.x + r > right + gw) { e.pos.x = right + gw - r; e.vel.x *= -res; } if (e.pos.y - r < gT) { e.pos.y = gT + r; e.vel.y *= -res; } if (e.pos.y + r > gB) { e.pos.y = gB - r; e.vel.y *= -res; } }
+        if (e.pos.y > gT && e.pos.y < gB) { const gw = config.goalWidth * gameScale; if (e.pos.x - r < left - gw) { e.pos.x = left - gw + r; e.vel.x *= -res; } if (e.pos.x + r > right + gw) { e.pos.x = right + gw - r; e.vel.x *= -res; } if (e.pos.y - r < gT) { e.pos.y = gT + r; e.vel.y *= -res; } if (e.pos.y + r > gB) { e.pos.y = gB - r; e.vel.y *= -res; } }
         else { if (e.pos.x < left) { e.pos.x = left + r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; } if (e.pos.x > right) { e.pos.x = right - r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; } }
     } else { if (e.pos.x - r < left && !(e.pos.y > gT && e.pos.y < gB)) { e.pos.x = left + r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; } if (e.pos.x + r > right && !(e.pos.y > gT && e.pos.y < gB)) { e.pos.x = right - r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; } }
     const corners = [{ x: left + cr, y: top + cr }, { x: right - cr, y: top + cr }, { x: left + cr, y: bottom - cr }, { x: right - cr, y: bottom - cr }];
@@ -399,7 +422,7 @@ function hexToRgba(hex, alpha) { const r = parseInt(hex.slice(1, 3), 16), g = pa
 function scoreGoal(team) {
     if (resetDelay > 0 || countdown > 0) return; if (team === 'blue') scoreBlue++; else scoreOrange++; scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange; shakeTime = 30; flashTime = 25; flashColor = team === 'blue' ? hexToRgba(config.colors.blue, 0.4) : hexToRgba(config.colors.orange, 0.4); goalMsgEl.style.opacity = 1; timeScale = 0.15; resetDelay = 120;
     const color = team === 'blue' ? config.colors.blue : config.colors.orange;
-    for (let i = 0; i < 80; i++) { const angle = Math.random() * Math.PI * 2, speed = 5 + Math.random() * 15; particles.push(new Particle(ball.pos.x, ball.pos.y, color, new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed), Math.random() > 0.5 ? 'spike' : 'circle')); }
+    for (let i = 0; i < 80; i++) { const angle = Math.random() * Math.PI * 2, speed = (5 + Math.random() * 15) * gameScale; particles.push(new Particle(ball.pos.x, ball.pos.y, color, new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed), Math.random() > 0.5 ? 'spike' : 'circle')); }
 }
 
 function startCountdown() { countdown = 180; countdownMsgEl.style.display = 'block'; }
@@ -413,11 +436,7 @@ function update() {
         if (!ball.onSurface && currentDribbler && !currentDribbler.isTouchingWall) {
             if (!settingsModified) {
                 dribbleTime += (1 / 60) * ts;
-                if (dribbleTime > 5) {
-                    timerContainer.style.display = 'flex';
-                    timerEl.innerText = dribbleTime.toFixed(2) + 's';
-                    timerTrophy.style.display = dribbleTime > getGlobalBest() ? 'block' : 'none';
-                }
+                if (dribbleTime > 5) { timerContainer.style.display = 'flex'; timerEl.innerText = dribbleTime.toFixed(2) + 's'; timerTrophy.style.display = dribbleTime > getGlobalBest() ? 'block' : 'none'; }
             }
         } else { if (dribbleTime > 0) checkDribbleRecord(dribbleTime); dribbleTime = 0; currentDribbler = null; timerContainer.style.display = 'none'; }
     }
@@ -427,13 +446,14 @@ function update() {
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); if (flashTime > 0) { ctx.fillStyle = flashColor; ctx.fillRect(0, 0, canvas.width, canvas.height); flashTime--; }
-    ctx.save(); if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); shakeTime--; }
-    const lx = arenaX, rx = arenaX + arenaWidth, ty = arenaY, by = arenaY + arenaHeight, cr = config.cornerRadius, gT = ty + arenaHeight/2 - config.goalHeight/2, gB = ty + arenaHeight/2 + config.goalHeight/2, gw = 100;
-    ctx.fillStyle = hexToRgba(config.colors.blue, 0.2); ctx.fillRect(lx - gw, gT, gw, 220); ctx.fillStyle = hexToRgba(config.colors.orange, 0.2); ctx.fillRect(rx, gT, gw, 220);
-    ctx.strokeStyle = config.colors.border; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(lx + cr, ty); ctx.lineTo(rx - cr, ty); ctx.arcTo(rx, ty, rx, ty + cr, cr); ctx.lineTo(rx, gT); ctx.lineTo(rx + gw, gT); ctx.lineTo(rx + gw, gB); ctx.lineTo(rx, gB); ctx.lineTo(rx, by - cr); ctx.arcTo(rx, by, rx - cr, by, cr); ctx.lineTo(lx + cr, by); ctx.arcTo(lx, by, lx, by - cr, cr); ctx.lineTo(lx, gB); ctx.lineTo(lx - gw, gB); ctx.lineTo(lx - gw, gT); ctx.lineTo(lx, gT); ctx.lineTo(lx, ty + cr); ctx.arcTo(lx, ty, lx + cr, ty, cr); ctx.stroke();
+    ctx.save(); if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 10 * gameScale, (Math.random() - 0.5) * 10 * gameScale); shakeTime--; }
+    const lx = arenaX, rx = arenaX + arenaWidth, ty = arenaY, by = arenaY + arenaHeight, cr = config.cornerRadius * gameScale, gH = config.goalHeight * gameScale, gT = ty + arenaHeight/2 - gH/2, gB = ty + arenaHeight/2 + gH/2, gw = 100 * gameScale;
+    ctx.fillStyle = hexToRgba(config.colors.blue, 0.2); ctx.fillRect(lx - gw, gT, gw, gH); ctx.fillStyle = hexToRgba(config.colors.orange, 0.2); ctx.fillRect(rx, gT, gw, gH);
+    ctx.strokeStyle = config.colors.border; ctx.lineWidth = 6 * gameScale; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(lx + cr, ty); ctx.lineTo(rx - cr, ty); ctx.arcTo(rx, ty, rx, ty + cr, cr); ctx.lineTo(rx, gT); ctx.lineTo(rx + gw, gT); ctx.lineTo(rx + gw, gB); ctx.lineTo(rx, gB); ctx.lineTo(rx, by - cr); ctx.arcTo(rx, by, rx - cr, by, cr); ctx.lineTo(lx + cr, by); ctx.arcTo(lx, by, lx, by - cr, cr); ctx.lineTo(lx, gB); ctx.lineTo(lx - gw, gB); ctx.lineTo(lx - gw, gT); ctx.lineTo(lx, gT); ctx.lineTo(lx, ty + cr); ctx.arcTo(lx, ty, lx + cr, ty, cr); ctx.stroke();
     effects.forEach(e => e.draw()); if (p1Joined) player1.draw(); if (p2Joined) player2.draw(); ball.draw(); particles.forEach(p => p.draw());
-    const gW = 12, gH = 180; ctx.fillStyle = 'rgba(255,255,255,0.05)'; if (p1Joined) { ctx.fillRect(40, canvas.height - 220, gW, gH); ctx.fillStyle = config.colors.blue; ctx.fillRect(40, canvas.height - 40 - (player1.boost * 1.6), gW, player1.boost * 1.6); if (player1.hasJump) { ctx.beginPath(); ctx.arc(46, canvas.height - 235, 4, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 10; ctx.shadowColor = config.colors.blue; ctx.fill(); ctx.shadowBlur = 0; } }
-    if (p2Joined) { ctx.fillRect(canvas.width - 52, canvas.height - 220, gW, gH); ctx.fillStyle = config.colors.orange; ctx.fillRect(canvas.width - 52, canvas.height - 40 - (player2.boost * 1.6), gW, player2.boost * 1.6); if (player2.hasJump) { ctx.beginPath(); ctx.arc(canvas.width - 46, canvas.height - 235, 4, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 10; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0; } }
+    const gW = 12 * gameScale, ghBar = 180 * gameScale; ctx.fillStyle = 'rgba(255,255,255,0.05)'; 
+    if (p1Joined) { ctx.fillRect(40 * gameScale, canvas.height - 220 * gameScale, gW, ghBar); ctx.fillStyle = config.colors.blue; ctx.fillRect(40 * gameScale, canvas.height - 40 * gameScale - (player1.boost * 1.6 * gameScale), gW, player1.boost * 1.6 * gameScale); if (player1.hasJump) { ctx.beginPath(); ctx.arc(46 * gameScale, canvas.height - 235 * gameScale, 4 * gameScale, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = config.colors.blue; ctx.fill(); ctx.shadowBlur = 0; } }
+    if (p2Joined) { ctx.fillRect(canvas.width - 52 * gameScale, canvas.height - 220 * gameScale, gW, ghBar); ctx.fillStyle = config.colors.orange; ctx.fillRect(canvas.width - 52 * gameScale, canvas.height - 40 * gameScale - (player2.boost * 1.6 * gameScale), gW, player2.boost * 1.6 * gameScale); if (player2.hasJump) { ctx.beginPath(); ctx.arc(canvas.width - 46 * gameScale, canvas.height - 235 * gameScale, 4 * gameScale, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0; } }
     ctx.restore();
 }
 

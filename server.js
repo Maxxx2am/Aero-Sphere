@@ -9,19 +9,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// Global Leaderboard Data (In-memory for now)
-let globalLeaderboard = [
-    { name: "Maxxx", score: 30.00 },
-    { name: "ProDribbler", score: 25.50 },
-    { name: "AeroKing", score: 20.20 }
-];
+// Global Leaderboard - Starts fresh and shared for everyone
+let globalLeaderboard = [];
 
-// Get leaderboard
+// API to get all scores
 app.get('/api/leaderboard', (req, res) => {
     res.json(globalLeaderboard);
 });
 
-// Submit score
+// API to submit a new score
 app.post('/api/leaderboard', (req, res) => {
     const { name, score } = req.body;
     
@@ -29,31 +25,28 @@ app.post('/api/leaderboard', (req, res) => {
         return res.status(400).json({ error: "Invalid data" });
     }
 
-    // Check if player already exists
-    const existingIndex = globalLeaderboard.findIndex(e => e.name === name);
+    // Merge logic: only keep personal best for each name
+    const existingIndex = globalLeaderboard.findIndex(e => e.name.toLowerCase() === name.toLowerCase());
     
     if (existingIndex !== -1) {
-        // Only update if it's a new personal best
         if (score > globalLeaderboard[existingIndex].score) {
             globalLeaderboard[existingIndex].score = score;
         }
     } else {
-        // New player
         globalLeaderboard.push({ name, score });
     }
 
-    // Sort and keep top 50
+    // Sort: highest to lowest
     globalLeaderboard.sort((a, b) => b.score - a.score);
-    globalLeaderboard = globalLeaderboard.slice(0, 50);
+    globalLeaderboard = globalLeaderboard.slice(0, 50); // Keep top 50 global records
 
     res.json({ success: true, leaderboard: globalLeaderboard });
 });
 
-// Serve the game
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Global Hall of Fame active on port ${PORT}`);
 });
