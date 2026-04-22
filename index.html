@@ -260,7 +260,7 @@ const settingsWarning = document.getElementById('settings-warning');
 
 const config = {
     gravity: 0.07, friction: 0.982, restitution: 1.15, rotationSensitivity: 0.2, boostPower: 0.22, enginePower: 0.18, 
-    baseBallRadius: 18, basePlayerRadius: 13, targetRatio: 1.8, goalWidth: 100, goalHeight: 220, cornerRadius: 80,
+    baseBallRadius: 32, basePlayerRadius: 23, targetRatio: 1.8, goalWidth: 150, goalHeight: 350, cornerRadius: 100,
     colors: { blue: '#0074D9', orange: '#FF851B', ball: '#FFFFFF', border: '#555555', bg: '#020202' }
 };
 
@@ -449,7 +449,7 @@ function draw() {
     ctx.save(); if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 10 * gameScale, (Math.random() - 0.5) * 10 * gameScale); shakeTime--; }
     const lx = arenaX, rx = arenaX + arenaWidth, ty = arenaY, by = arenaY + arenaHeight, cr = config.cornerRadius * gameScale, gH = config.goalHeight * gameScale, gT = ty + arenaHeight/2 - gH/2, gB = ty + arenaHeight/2 + gH/2, gw = 100 * gameScale;
     ctx.fillStyle = hexToRgba(config.colors.blue, 0.2); ctx.fillRect(lx - gw, gT, gw, gH); ctx.fillStyle = hexToRgba(config.colors.orange, 0.2); ctx.fillRect(rx, gT, gw, gH);
-    ctx.strokeStyle = config.colors.border; ctx.lineWidth = 6 * gameScale; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(lx + cr, ty); ctx.lineTo(rx - cr, ty); ctx.arcTo(rx, ty, rx, ty + cr, cr); ctx.lineTo(rx, gT); ctx.lineTo(rx + gw, gT); ctx.lineTo(rx + gw, gB); ctx.lineTo(rx, gB); ctx.lineTo(rx, by - cr); ctx.arcTo(rx, by, rx - cr, by, cr); ctx.lineTo(lx + cr, by); ctx.arcTo(lx, by, lx, by - cr, cr); ctx.lineTo(lx, gB); ctx.lineTo(lx - gw, gB); ctx.lineTo(lx - gw, gT); ctx.lineTo(lx, gT); ctx.lineTo(lx, ty + cr); ctx.arcTo(lx, ty, lx + cr, ty, cr); ctx.stroke();
+    ctx.strokeStyle = config.colors.border; ctx.lineWidth = 10 * gameScale; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(lx + cr, ty); ctx.lineTo(rx - cr, ty); ctx.arcTo(rx, ty, rx, ty + cr, cr); ctx.lineTo(rx, gT); ctx.lineTo(rx + gw, gT); ctx.lineTo(rx + gw, gB); ctx.lineTo(rx, gB); ctx.lineTo(rx, by - cr); ctx.arcTo(rx, by, rx - cr, by, cr); ctx.lineTo(lx + cr, by); ctx.arcTo(lx, by, lx, by - cr, cr); ctx.lineTo(lx, gB); ctx.lineTo(lx - gw, gB); ctx.lineTo(lx - gw, gT); ctx.lineTo(lx, gT); ctx.lineTo(lx, ty + cr); ctx.arcTo(lx, ty, lx + cr, ty, cr); ctx.stroke();
     effects.forEach(e => e.draw()); if (p1Joined) player1.draw(); if (p2Joined) player2.draw(); ball.draw(); particles.forEach(p => p.draw());
     const gW = 12 * gameScale, ghBar = 180 * gameScale; ctx.fillStyle = 'rgba(255,255,255,0.05)'; 
     if (p1Joined) { ctx.fillRect(40 * gameScale, canvas.height - 220 * gameScale, gW, ghBar); ctx.fillStyle = config.colors.blue; ctx.fillRect(40 * gameScale, canvas.height - 40 * gameScale - (player1.boost * 1.6 * gameScale), gW, player1.boost * 1.6 * gameScale); if (player1.hasJump) { ctx.beginPath(); ctx.arc(46 * gameScale, canvas.height - 235 * gameScale, 4 * gameScale, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = config.colors.blue; ctx.fill(); ctx.shadowBlur = 0; } }
