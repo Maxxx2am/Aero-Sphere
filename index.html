@@ -329,22 +329,26 @@ document.getElementById('create-room-btn').onclick = () => {
     const roomID = roomInput.value.trim().toUpperCase();
     if (!roomID) return alert("Enter a Room ID");
     for (const k in localKeys) localKeys[k] = false;
+    roomInput.blur();
     currentRoom = roomID;
     isHost = true;
     socket.emit('joinRoom', roomID);
     multiStatus.innerText = `HOSTING: ${roomID}`;
     multiStatus.style.color = '#0074D9';
+    document.getElementById('multiplayer-panel').style.display = 'none';
 };
 
 document.getElementById('join-room-btn').onclick = () => {
     const roomID = roomInput.value.trim().toUpperCase();
     if (!roomID) return alert("Enter a Room ID");
     for (const k in localKeys) localKeys[k] = false;
+    roomInput.blur();
     currentRoom = roomID;
     isHost = false;
     socket.emit('joinRoom', roomID);
     multiStatus.innerText = `CONNECTED: ${roomID}`;
     multiStatus.style.color = '#FF851B';
+    document.getElementById('multiplayer-panel').style.display = 'none';
 };
 
 socket.on('gameStateUpdate', (state) => {
@@ -377,6 +381,8 @@ socket.on('gameStateUpdate', (state) => {
 });
 
 socket.on('remoteInput', (rk) => {
+    // Completely sync remote keys to prevent stuck inputs
+    for (const key in remoteKeys) remoteKeys[key] = false;
     for (const key in rk) remoteKeys[key] = rk[key];
 });
 
