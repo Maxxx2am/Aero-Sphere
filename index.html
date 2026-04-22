@@ -259,7 +259,7 @@ const timerEl = document.getElementById('dribble-timer'), timerContainer = docum
 const settingsWarning = document.getElementById('settings-warning');
 
 const config = {
-    gravity: 0.07, friction: 0.982, restitution: 1.15, rotationSensitivity: 0.2, boostPower: 0.22, enginePower: 0.18, ballRadius: 18, playerRadius: 13, targetRatio: 1.8,
+    gravity: 0.07, friction: 0.982, restitution: 1.15, rotationSensitivity: 0.2, boostPower: 0.22, enginePower: 0.18, ballRadius: 18, playerRadius: 13, targetRatio: 1.8, goalWidth: 100, goalHeight: 220, cornerRadius: 80,
     colors: { blue: '#0074D9', orange: '#FF851B', ball: '#FFFFFF', border: '#555555', bg: '#020202' }
 };
 
@@ -428,8 +428,8 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); if (flashTime > 0) { ctx.fillStyle = flashColor; ctx.fillRect(0, 0, canvas.width, canvas.height); flashTime--; }
     ctx.save(); if (shakeTime > 0) { ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10); shakeTime--; }
-    const lx = arenaX, rx = arenaX + arenaWidth, ty = arenaY, by = arenaY + arenaHeight, cr = config.cornerRadius, gT = ty + arenaHeight/2 - config.goalHeight/2, gB = ty + arenaHeight/2 + config.goalHeight/2, gw = config.goalWidth;
-    ctx.fillStyle = hexToRgba(config.colors.blue, 0.2); ctx.fillRect(lx - gw, gT, gw, config.goalHeight); ctx.fillStyle = hexToRgba(config.colors.orange, 0.2); ctx.fillRect(rx, gT, gw, config.goalHeight);
+    const lx = arenaX, rx = arenaX + arenaWidth, ty = arenaY, by = arenaY + arenaHeight, cr = config.cornerRadius, gT = ty + arenaHeight/2 - config.goalHeight/2, gB = ty + arenaHeight/2 + config.goalHeight/2, gw = 100;
+    ctx.fillStyle = hexToRgba(config.colors.blue, 0.2); ctx.fillRect(lx - gw, gT, gw, 220); ctx.fillStyle = hexToRgba(config.colors.orange, 0.2); ctx.fillRect(rx, gT, gw, 220);
     ctx.strokeStyle = config.colors.border; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(lx + cr, ty); ctx.lineTo(rx - cr, ty); ctx.arcTo(rx, ty, rx, ty + cr, cr); ctx.lineTo(rx, gT); ctx.lineTo(rx + gw, gT); ctx.lineTo(rx + gw, gB); ctx.lineTo(rx, gB); ctx.lineTo(rx, by - cr); ctx.arcTo(rx, by, rx - cr, by, cr); ctx.lineTo(lx + cr, by); ctx.arcTo(lx, by, lx, by - cr, cr); ctx.lineTo(lx, gB); ctx.lineTo(lx - gw, gB); ctx.lineTo(lx - gw, gT); ctx.lineTo(lx, gT); ctx.lineTo(lx, ty + cr); ctx.arcTo(lx, ty, lx + cr, ty, cr); ctx.stroke();
     effects.forEach(e => e.draw()); if (p1Joined) player1.draw(); if (p2Joined) player2.draw(); ball.draw(); particles.forEach(p => p.draw());
     const gW = 12, gH = 180; ctx.fillStyle = 'rgba(255,255,255,0.05)'; if (p1Joined) { ctx.fillRect(40, canvas.height - 220, gW, gH); ctx.fillStyle = config.colors.blue; ctx.fillRect(40, canvas.height - 40 - (player1.boost * 1.6), gW, player1.boost * 1.6); if (player1.hasJump) { ctx.beginPath(); ctx.arc(46, canvas.height - 235, 4, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 10; ctx.shadowColor = config.colors.blue; ctx.fill(); ctx.shadowBlur = 0; } }
