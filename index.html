@@ -27,9 +27,9 @@
         }
         #scoreboard {
             position: absolute;
-            top: 15px;
+            top: 10px;
             left: 15px;
-            font-size: 60px;
+            font-size: 40px;
             font-weight: 900;
             color: #fff;
             background: rgba(0, 0, 0, 0.2);
@@ -385,11 +385,18 @@ socket.on('gameStateUpdate', (state) => {
     
     if (state.ts === 1.0) goalMsgEl.style.opacity = 0;
 
-    timeScale = state.ts; countdown = state.cd;
+    timeScale = state.ts; 
+    countdown = state.cd;
+    resetDelay = state.rd;
+
+    // Explicit Countdown Sync for Client
     if (countdown > 0) {
         countdownMsgEl.style.display = 'block';
         const seconds = Math.ceil(countdown / 60);
         countdownMsgEl.innerText = seconds > 0 ? seconds : "GO!";
+    } else if (state.showGo) {
+        countdownMsgEl.style.display = 'block';
+        countdownMsgEl.innerText = "GO!";
     } else {
         countdownMsgEl.style.display = 'none';
     }
@@ -614,7 +621,7 @@ function scoreGoal(team) {
     
     shakeTime = 30; flashTime = 25; 
     flashColor = team === 'blue' ? hexToRgba(config.colors.blue, 0.4) : hexToRgba(config.colors.orange, 0.4); 
-    goalMsgEl.style.opacity = 1; timeScale = 0.15; resetDelay = 120;
+    goalMsgEl.style.opacity = 1; timeScale = 0.15; resetDelay = 180;
     
     // Broadcast goal for multiplayer sync
     if (currentRoom && isHost) {
@@ -635,13 +642,26 @@ function startCountdown() { countdown = 180; countdownMsgEl.style.display = 'blo
 function update() {
     const ts = timeScale; if (!p1Joined && keys['KeyW']) { p1Joined = true; document.getElementById('p1-join').style.display = 'none'; document.getElementById('p1-controls').style.display = 'block'; } if (!p2Joined && keys['ArrowUp']) { p2Joined = true; document.getElementById('p2-join').style.display = 'none'; document.getElementById('p2-controls').style.display = 'block'; }
     
-    if (resetDelay > 0) { 
-        resetDelay--; 
-        // Stop ball during goal animation
-        ball.vel.x = 0; ball.vel.y = 0;
-        if (resetDelay <= 0) { timeScale = 1.0; goalMsgEl.style.opacity = 0; resetPositions(); startCountdown(); } 
+    // Timers are controlled by Host only in Multiplayer
+    if (isHost || !currentRoom) {
+        if (resetDelay > 0) { 
+            resetDelay--; 
+            if (resetDelay <= 0) { timeScale = 1.0; goalMsgEl.style.opacity = 0; resetPositions(); startCountdown(); } 
+        }
+        if (countdown > 0) { 
+            countdown--; 
+            if (countdown <= 0) {
+                countdownMsgEl.innerText = "GO!";
+                setTimeout(() => { if (!currentRoom || isHost) countdownMsgEl.style.display = 'none'; }, 500); 
+            }
+        }
     }
-    if (countdown > 0) { countdown--; const seconds = Math.ceil(countdown / 60); countdownMsgEl.innerText = seconds > 0 ? seconds : "GO!"; if (countdown <= 0) setTimeout(() => { countdownMsgEl.style.display = 'none'; }, 500); }
+
+    // Ball velocity must be zeroed for both sides during resetDelay
+    if (resetDelay > 0) {
+        ball.vel.x = 0; ball.vel.y = 0;
+    }
+
     if (resetDelay <= 0 && countdown <= 0) {
         syncMultiplayer();
         if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); } if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); } 
@@ -678,6 +698,12 @@ function draw() {
     if (p2Joined) { ctx.fillRect(canvas.width - 52 * gameScale, canvas.height - 220 * gameScale, gW, ghBar); ctx.fillStyle = config.colors.orange; ctx.fillRect(canvas.width - 52 * gameScale, canvas.height - 40 * gameScale - (player2.boost * 1.6 * gameScale), gW, player2.boost * 1.6 * gameScale); if (player2.hasJump) { ctx.beginPath(); ctx.arc(canvas.width - 46 * gameScale, canvas.height - 235 * gameScale, 4 * gameScale, 0, Math.PI * 2); ctx.fillStyle = "#fff"; ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0; } }
     ctx.restore();
 }
+
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+window.onresize = init; init(); loop();
+</script>
+</body>
+</html>
 
 function loop() { update(); draw(); requestAnimationFrame(loop); }
 window.onresize = init; init(); loop();
