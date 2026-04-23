@@ -322,12 +322,6 @@ const roomInput = document.getElementById('room-input');
 
 document.getElementById('multiplayer-toggle').onclick = () => {
     alert("I'm currently working on the multiplayer mode! - Max");
-    const p = document.getElementById('multiplayer-panel');
-    const isOpening = p.style.display !== 'block';
-    p.style.display = isOpening ? 'block' : 'none';
-    document.getElementById('settings-panel').style.display = 'none';
-    document.getElementById('leaderboard-panel').style.display = 'none';
-    if (isOpening) for (const k in localKeys) localKeys[k] = false;
 };
 
 document.getElementById('create-room-btn').onclick = () => {
