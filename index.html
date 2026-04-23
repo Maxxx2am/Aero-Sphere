@@ -363,63 +363,59 @@ document.getElementById('join-room-btn').onclick = () => {
         document.getElementById('p2-join').style.display = 'none';
         document.getElementById('p2-controls').style.display = 'block';
         const p2hint = document.getElementById('p2-controls-hint');
-        if (p2hint) p2hint.innerText = 'WASD: MOVE · R: BOOST · T: JUMP';
-        // Reassign P2 to WASD for the client's local keyboard
-        if (player2) player2.controls = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'KeyT', boost: 'KeyR' };
+        if (p2hint) p2hint.innerHTML = 'WASD <span style="color:#555">or</span> ARROWS: MOVE<br>R <span style="color:#555">or</span> ,: BOOST &nbsp; T <span style="color:#555">or</span> .: JUMP';
+        // P2 gets WASD + arrows as fallback. We override handleInput to check both.
+        if (player2) player2.controls = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'KeyT', boost: 'KeyR',
+                                          up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
     }
 };
 
 socket.on('gameStateUpdate', (state) => {
-    if (isHost) return; // Host is authoritative
-    
-    // Dead Reckoning: snap positions only if too far off (> 40px for ball, > 60px for players)
-    // Between packets the client runs local physics to fill the gaps smoothly
+    if (isHost) return;
+
     if (ball) {
+        // Ball: dead reckoning. Sync velocity always so local sim stays accurate.
+        // Hard snap only if too far off (collision the client missed).
         const targetBallX = state.ball.x * arenaWidth + arenaX;
         const targetBallY = state.ball.y * arenaHeight + arenaY;
-        const distBall = Math.hypot(targetBallX - ball.pos.x, targetBallY - ball.pos.y);
-        if (distBall > 40) {
-            // Too far off - hard snap
+        if (Math.hypot(targetBallX - ball.pos.x, targetBallY - ball.pos.y) > 60) {
             ball.pos.x = targetBallX;
             ball.pos.y = targetBallY;
         }
-        // Always sync velocity so local simulation stays accurate
         ball.vel.x = state.ball.vx * gameScale;
         ball.vel.y = state.ball.vy * gameScale;
     }
+
+    // P1 (opponent on client screen): always snap directly to host position.
+    // The client does NOT simulate P1 — host is 100% authoritative for P1.
     if (player1) {
-        const targetP1X = state.p1.x * arenaWidth + arenaX;
-        const targetP1Y = state.p1.y * arenaHeight + arenaY;
-        const distP1 = Math.hypot(targetP1X - player1.pos.x, targetP1Y - player1.pos.y);
-        if (distP1 > 60) {
-            player1.pos.x = targetP1X;
-            player1.pos.y = targetP1Y;
-        } else {
-            // Gentle lerp for players (their movement is more predictable)
-            player1.pos.x += (targetP1X - player1.pos.x) * 0.5;
-            player1.pos.y += (targetP1Y - player1.pos.y) * 0.5;
-        }
+        player1.pos.x = state.p1.x * arenaWidth + arenaX;
+        player1.pos.y = state.p1.y * arenaHeight + arenaY;
         player1.vel.x = state.p1.vx * gameScale;
         player1.vel.y = state.p1.vy * gameScale;
         player1.currentAngle = state.p1.angle;
         player1.boost = state.p1.boost;
         player1.hasJump = state.p1.hasJump;
-        // Replicate boost flames for P1 on client screen
         if (state.p1.isBoosting) player1.createBoostFlame();
     }
+
+    // P2 (local player on client): use gentle lerp correction only — client
+    // runs local physics for P2, host corrects drift. Hard snap if very far off.
     if (player2) {
         const targetP2X = state.p2.x * arenaWidth + arenaX;
         const targetP2Y = state.p2.y * arenaHeight + arenaY;
         const distP2 = Math.hypot(targetP2X - player2.pos.x, targetP2Y - player2.pos.y);
-        if (distP2 > 60) {
+        if (distP2 > 120) {
+            // Very far off (e.g. after reset) — hard snap
             player2.pos.x = targetP2X;
             player2.pos.y = targetP2Y;
-        } else {
-            player2.pos.x += (targetP2X - player2.pos.x) * 0.5;
-            player2.pos.y += (targetP2Y - player2.pos.y) * 0.5;
+            player2.vel.x = state.p2.vx * gameScale;
+            player2.vel.y = state.p2.vy * gameScale;
+        } else if (distP2 > 5) {
+            // Small drift — gentle correction, don't override velocity
+            player2.pos.x += (targetP2X - player2.pos.x) * 0.15;
+            player2.pos.y += (targetP2Y - player2.pos.y) * 0.15;
         }
-        player2.vel.x = state.p2.vx * gameScale;
-        player2.vel.y = state.p2.vy * gameScale;
         player2.currentAngle = state.p2.angle;
         player2.boost = state.p2.boost;
         player2.hasJump = state.p2.hasJump;
@@ -489,15 +485,14 @@ socket.on('remoteInput', (rk) => {
     // so the existing handleInput logic works without conflicts.
     for (const key in remoteKeys) remoteKeys[key] = false;
     if (isHost) {
-        // Remap client's WASD -> Arrow equivalents so P2.handleInput() picks them up
-        if (rk['KeyW'])   remoteKeys['ArrowUp']    = true;
-        if (rk['KeyS'])   remoteKeys['ArrowDown']  = true;
-        if (rk['KeyA'])   remoteKeys['ArrowLeft']  = true;
-        if (rk['KeyD'])   remoteKeys['ArrowRight'] = true;
-        if (rk['KeyR'])   remoteKeys['Comma']      = true;
-        if (rk['KeyT'])   remoteKeys['Period']     = true;
+        // Client sends WASD (or arrows). Remap to P2's Arrow control slots for handleInput().
+        if (rk['KeyW']     || rk['ArrowUp'])    remoteKeys['ArrowUp']    = true;
+        if (rk['KeyS']     || rk['ArrowDown'])  remoteKeys['ArrowDown']  = true;
+        if (rk['KeyA']     || rk['ArrowLeft'])  remoteKeys['ArrowLeft']  = true;
+        if (rk['KeyD']     || rk['ArrowRight']) remoteKeys['ArrowRight'] = true;
+        if (rk['KeyR']     || rk['Comma'])      remoteKeys['Comma']      = true;
+        if (rk['KeyT']     || rk['Period'])     remoteKeys['Period']     = true;
     }
-    // Client doesn't need remoteKeys for input (they control P2 locally via localKeys)
 });
 
 function syncMultiplayer() {
@@ -581,17 +576,23 @@ class Entity {
 class Player extends Entity {
     constructor(x, y, color, controls) { super(x, y, playerRadius, 1.0, color); this.controls = controls; this.currentAngle = color === config.colors.blue ? 0 : Math.PI; this.targetAngle = this.currentAngle; this.boost = 112; this.isRecharging = false; this.pulse = 0; this.isTouchingWall = false; this.jumping = false; this.hasJump = true; this.jumpCooldown = 0; }
     handleInput(ts) {
-        let dx = 0, dy = 0; if (keys[this.controls.up]) dy -= 1; if (keys[this.controls.down]) dy += 1; if (keys[this.controls.left]) dx -= 1; if (keys[this.controls.right]) dx += 1;
+        let dx = 0, dy = 0;
+        if (keys[this.controls.up]   || (this.controls.up2   && keys[this.controls.up2]))   dy -= 1;
+        if (keys[this.controls.down] || (this.controls.down2 && keys[this.controls.down2])) dy += 1;
+        if (keys[this.controls.left] || (this.controls.left2 && keys[this.controls.left2])) dx -= 1;
+        if (keys[this.controls.right]|| (this.controls.right2&& keys[this.controls.right2]))dx += 1;
         if (dx !== 0 || dy !== 0) this.targetAngle = Math.atan2(dy, dx);
         let diff = this.targetAngle - this.currentAngle; while (diff < -Math.PI) diff += Math.PI * 2; while (diff > Math.PI) diff -= Math.PI * 2;
         this.currentAngle += diff * config.rotationSensitivity * ts;
         if (this.jumpCooldown > 0) this.jumpCooldown -= ts;
         if (dx !== 0) { if (this.isTouchingWall) this.applyForce(new Vector2D(dx * config.enginePower * gameScale, 0)); else this.applyForce(new Vector2D(dx * config.enginePower * 0.3 * gameScale, 0)); }
-        if (keys[this.controls.boost] && this.boost > 0) { this.isRecharging = false; const multiplier = this.isTouchingWall ? 1.0 : 0.9; this.applyForce(new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(config.boostPower * multiplier * gameScale)); this.boost -= 0.4 * ts; this.createBoostFlame(); } else if (this.isTouchingWall) this.isRecharging = true;
+        const boostKey = keys[this.controls.boost] || (this.controls.boost2 && keys[this.controls.boost2]);
+        const jumpKey  = keys[this.controls.jump]  || (this.controls.jump2  && keys[this.controls.jump2]);
+        if (boostKey && this.boost > 0) { this.isRecharging = false; const multiplier = this.isTouchingWall ? 1.0 : 0.9; this.applyForce(new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(config.boostPower * multiplier * gameScale)); this.boost -= 0.4 * ts; this.createBoostFlame(); } else if (this.isTouchingWall) this.isRecharging = true;
         if (this.isRecharging) this.boost = Math.min(112, this.boost + 1.35 * ts);
         if (this.isTouchingWall) this.hasJump = true;
-        if (keys[this.controls.jump] && !this.jumping && this.hasJump && this.jumpCooldown <= 0) { this.applyForce(new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(5.5 * gameScale)); this.jumping = true; this.hasJump = false; this.jumpCooldown = 30; effects.push(new JumpAura(this.pos.x, this.pos.y)); }
-        if (!keys[this.controls.jump]) this.jumping = false;
+        if (jumpKey && !this.jumping && this.hasJump && this.jumpCooldown <= 0) { this.applyForce(new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(5.5 * gameScale)); this.jumping = true; this.hasJump = false; this.jumpCooldown = 30; effects.push(new JumpAura(this.pos.x, this.pos.y)); }
+        if (!jumpKey) this.jumping = false;
     }
     createBoostFlame() { const backAngle = this.currentAngle + Math.PI; for (let i = 0; i < 2; i++) { const angle = backAngle + (Math.random() - 0.5) * 0.4; const speed = (2 + Math.random() * 3) * gameScale; particles.push(new Particle(this.pos.x + Math.cos(backAngle) * this.radius, this.pos.y + Math.sin(backAngle) * this.radius, this.color, new Vector2D(Math.cos(angle) * speed, Math.sin(angle) * speed), 'spike')); } }
     draw() {
@@ -726,19 +727,20 @@ function update(dt = 1) {
 
     if (resetDelay <= 0 && countdown <= 0 && goTimer <= 0) {
         if (currentRoom && !isHost) {
-            // CLIENT: run full local physics for smooth 60fps visuals
-            // Host state corrects us via dead reckoning in gameStateUpdate
-            if (p1Joined) { player1.update(ts); checkWallCollision(player1); }
+            // CLIENT MODE:
+            // P1 (opponent) — NOT simulated locally. Position comes 100% from host via gameStateUpdate.
+            // P2 (local player) — simulated locally for instant feel. Host gently corrects drift.
+            // Ball — simulated locally for smooth visuals. Host corrects if too far off.
             if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); }
             ball.update(ts);
             checkWallCollision(ball);
         } else {
-            // Host or Offline Mode
+            // HOST or OFFLINE: full physics for everyone
             if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); }
             if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); }
         }
         
-        // Physics Authority: Only host (or offline) handles ball collisions and scoring
+        // Physics Authority: Only host (or offline) handles authoritative ball + collisions
         if (isHost || !currentRoom) {
             ball.update(ts); 
             checkWallCollision(ball); 
