@@ -502,6 +502,7 @@ function scoreGoal(team) {
     shakeTime = 30; flashTime = 25;
     flashColor = team === 'blue' ? hexToRgba(config.colors.blue, 0.4) : hexToRgba(config.colors.orange, 0.4);
     goalMsgEl.style.opacity = 1; timeScale = 0.15; resetDelay = 180;
+    dribbleTime = 0; currentDribbler = null; timerContainer.style.display = 'none';
     if (currentRoom && isHost) socket.emit('goalScored', { roomID: currentRoom, team, ballX: (ball.pos.x - arenaX) / arenaWidth, ballY: (ball.pos.y - arenaY) / arenaHeight });
     const color = team === 'blue' ? config.colors.blue : config.colors.orange;
     for (let i = 0; i < 80; i++) { const a = Math.random() * Math.PI * 2, s = (5 + Math.random() * 15) * gameScale; particles.push(new Particle(ball.pos.x, ball.pos.y, color, new Vector2D(Math.cos(a) * s, Math.sin(a) * s), Math.random() > 0.5 ? 'spike' : 'circle')); }
