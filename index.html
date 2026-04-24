@@ -780,8 +780,11 @@ function updateLeaderboardUI(full = false) {
 function startTrials() {
     gameState = 'trials'; resetPositions();
     // In trials: single player, accept both WASD and arrows
-    if (player1) player1.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost,
-        up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
+    if (player1) {
+        player1.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost,
+            up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
+        player1.jumps = 3;
+    }
     // Position player at left side, center height
     player1.pos.x = arenaX + 180 * gameScale;
     player1.pos.y = arenaY + arenaHeight / 2;
@@ -800,6 +803,9 @@ function endTrials() {
     const metres = Math.floor(trialDistance / 100);
     trialsHUD.style.display = 'none';
     document.getElementById('scoreboard').style.display = 'block';
+    // Restore hints if players are joined
+    if (p1Joined) document.getElementById('p1-controls').style.display = 'block';
+    if (p2Joined) document.getElementById('p2-controls').style.display = 'block';
     // Restore join prompts if needed
     if (!p1Joined) document.getElementById('p1-join').style.display = 'block';
     if (!p2Joined && !currentRoom) document.getElementById('p2-join').style.display = 'block';
@@ -851,7 +857,7 @@ socket.on('gameStateUpdate', (state) => {
         if (p1d > SNAP_P1) { player1.pos.x = tp1x; player1.pos.y = tp1y; }
         else { player1.pos.x += (tp1x - player1.pos.x) * LERP_P1; player1.pos.y += (tp1y - player1.pos.y) * LERP_P1; }
         player1.vel.x = state.p1.vx * gameScale; player1.vel.y = state.p1.vy * gameScale;
-        player1.currentAngle = state.p1.angle; player1.boost = state.p1.boost; player1.hasJump = state.p1.hasJump;
+        player1.currentAngle = state.p1.angle; player1.boost = state.p1.boost; player1.hasJump = state.p1.hasJump; player1.jumps = state.p1.jumps;
         if (state.p1.isBoosting) player1.createBoostFlame();
     }
     // P2: local player — gentle correction only, never hard-snap on small divergence
@@ -865,7 +871,7 @@ socket.on('gameStateUpdate', (state) => {
             player2.pos.x += (tp2x - player2.pos.x) * LERP_P2;
             player2.pos.y += (tp2y - player2.pos.y) * LERP_P2;
         }
-        player2.hasJump = state.p2.hasJump;
+        player2.hasJump = state.p2.hasJump; player2.jumps = state.p2.jumps;
     }
     scoreBlue = state.scoreB; scoreOrange = state.scoreO;
     scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
