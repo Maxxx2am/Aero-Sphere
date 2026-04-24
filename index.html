@@ -80,9 +80,10 @@
         <button class="ui-btn" id="retry-trials-btn" style="margin-top:0;">TRY AGAIN</button>
         <button class="ui-btn cancel" id="exit-trials-btn">EXIT TO ARENA</button>
     </div>
-    <div class="controls-hint" id="p1-controls" style="display: none;"><span id="p1-name" style="color: #0074D9">PLAYER 1</span><br>WASD / ARROWS: MOVE<br>R / ,: BOOST<br>T / .: JUMP</div>
-    <div class="controls-hint" id="p2-controls" style="display: none;"><span id="p2-name" style="color: #FF851B">PLAYER 2</span><br>WASD / ARROWS: MOVE<br>,: BOOST<br>.: JUMP</div>
-    <div id="p1-join" class="controls-hint" style="left: 40px; bottom: 40px; color: #fff; font-size: 14px;">PRESS <span style="color: #0074D9">W</span> OR <span style="color:#0074D9">↑</span> TO JOIN</div>
+    <div class="controls-hint" id="p1-controls" style="display: none;"><span id="p1-name" style="color: #0074D9">PLAYER 1</span><br>WASD: MOVE<br>R: BOOST<br>T: JUMP</div>
+    <div class="controls-hint" id="p2-controls" style="display: none;"><span id="p2-name" style="color: #FF851B">PLAYER 2</span><br>ARROWS: MOVE<br>,: BOOST<br>.: JUMP</div>
+    <div id="p1-join" class="controls-hint" style="left: 40px; bottom: 40px; color: #fff; font-size: 14px;">PRESS <span style="color: #0074D9">W</span> TO JOIN</div>
+    <div id="p2-join" class="controls-hint" style="right: 40px; bottom: 40px; color: #fff; font-size: 14px;">PRESS <span style="color: #FF851B">↑</span> TO JOIN</div>
 </div>
 
 <div id="leaderboard-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55.47.98.97 1.21C11.47 18.44 12 19 12 19s.53-.56 1.03-.79c.5-.23.97-.66.97-1.21v-2.34"></path><path d="M12 15a6 6 0 0 0 6-6V3H6v6a6 6 0 0 0 6 6Z"></path></svg></div>
@@ -617,16 +618,11 @@ function init() {
 function resetPositions() {
     const wallT = 5 * gameScale; // matches physics inset
     const groundY = arenaY + arenaHeight - wallT - playerRadius;
+    // Local default: P1 = WASD, P2 = Arrows
     player1 = new Player(arenaX + wallT + 150 * gameScale, groundY, config.colors.blue,
-        { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost,
-          up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' });
+        { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost });
     player2 = new Player(arenaX + arenaWidth - wallT - 150 * gameScale, groundY, config.colors.orange,
         { up: keybinds.p2up, down: keybinds.p2down, left: keybinds.p2left, right: keybinds.p2right, jump: keybinds.p2jump, boost: keybinds.p2boost });
-    // Restore WASD+arrows for multiplayer client P2
-    if (currentRoom && !isHost) {
-        player2.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost,
-            up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
-    }
     ball = new Ball(arenaX + arenaWidth / 2, arenaY + arenaHeight * 2 / 3);
     const midY = arenaY + arenaHeight / 2, gh = config.goalHeight * gameScale / 2;
     posts = [{ x: arenaX, y: midY - gh }, { x: arenaX, y: midY + gh }, { x: arenaX + arenaWidth, y: midY - gh }, { x: arenaX + arenaWidth, y: midY + gh }];
@@ -683,20 +679,27 @@ function checkWallCollision(e) {
         }
     }
 
-    // Corner rounding — push entity away from the rounded corner arc
+    // Corner rounding — the corners are concave arcs. The solid region is OUTSIDE the arc (distance > cr from corner center).
+    // Push entity inward (toward arena center) when it strays into the cut-off corner.
     const cr = config.cornerRadius * gameScale;
-    const corners = [{ x: lx + cr, y: ty + cr }, { x: rx - cr, y: ty + cr }, { x: lx + cr, y: by - cr }, { x: rx - cr, y: by - cr }];
+    const corners = [
+        { x: lx + cr, y: ty + cr },   // top-left
+        { x: rx - cr, y: ty + cr },   // top-right
+        { x: lx + cr, y: by - cr },   // bottom-left
+        { x: rx - cr, y: by - cr }    // bottom-right
+    ];
     corners.forEach(c => {
-        // Only apply if entity is in the corner quadrant
-        const inCornerQuad = (e.pos.x < c.x ? c.x === lx + cr : c.x === rx - cr) &&
-                             (e.pos.y < c.y ? c.y === ty + cr : c.y === by - cr);
-        if (!inCornerQuad) return;
+        // Only act when entity centre is in the actual corner quadrant (past the arc)
+        const inQuadX = (c.x === lx + cr) ? e.pos.x < c.x : e.pos.x > c.x;
+        const inQuadY = (c.y === ty + cr) ? e.pos.y < c.y : e.pos.y > c.y;
+        if (!inQuadX || !inQuadY) return;
         const d = e.pos.dist(c);
-        // Push out if inside the arc wall
-        if (d < cr + r && d > 0) {
+        // Wall surface is at distance cr from corner centre; entity must stay at least r inside it
+        if (d < cr - r && d > 0) {
+            // Push entity to the arc surface
             const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d;
-            e.pos.x = c.x + nx * (cr + r);
-            e.pos.y = c.y + ny * (cr + r);
+            e.pos.x = c.x + nx * (cr - r);
+            e.pos.y = c.y + ny * (cr - r);
             const dot = e.vel.x * nx + e.vel.y * ny;
             if (dot < 0) { e.vel.x -= (1 + res) * dot * nx; e.vel.y -= (1 + res) * dot * ny; }
             if (e instanceof Player) e.isTouchingWall = true;
@@ -772,6 +775,9 @@ function updateLeaderboardUI(full = false) {
 // ─── Trials Mode ──────────────────────────────────────────────────────────────
 function startTrials() {
     gameState = 'trials'; resetPositions();
+    // In trials: single player, accept both WASD and arrows
+    if (player1) player1.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost,
+        up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
     // Position player at left side, center height
     player1.pos.x = arenaX + 180 * gameScale;
     player1.pos.y = arenaY + arenaHeight / 2;
@@ -921,13 +927,14 @@ function syncMultiplayer() {
 function setupAsHost() {
     p1Joined = true; p2Joined = false;
     resetPositions();
-    // Host P1: use only WASD (arrows are remote P2 keys)
+    // Host P1: WASD only (arrows are reserved for remote P2 relay)
     if (player1) player1.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost };
     scoreBlue = 0; scoreOrange = 0;
     scoreBlueEl.innerText = '0'; scoreOrangeEl.innerText = '0';
     resetDelay = 0; countdown = 0; goTimer = 0;
     dribbleTime = 0; currentDribbler = null; timerContainer.style.display = 'none';
     document.getElementById('p1-join').style.display = 'none';
+    document.getElementById('p2-join').style.display = 'none';
     document.getElementById('p1-controls').style.display = 'block';
     document.getElementById('p2-controls').style.display = 'none';
     updateSettingsLock();
@@ -938,6 +945,7 @@ function setupAsClient() {
     resetPositions();
     dribbleTime = 0; currentDribbler = null; timerContainer.style.display = 'none';
     document.getElementById('p1-join').style.display = 'none';
+    document.getElementById('p2-join').style.display = 'none';
     document.getElementById('p1-controls').style.display = 'none';
     document.getElementById('p2-controls').style.display = 'block';
     // Client plays as P2 — allow both WASD (p1 keybinds) and arrows
@@ -1090,15 +1098,18 @@ function update(dt = 1) {
             if (o.x + o.w < arenaX - 50) trialObstacles.splice(i, 1);
         }
     } else {
-        // Arena mode
-        // Solo/local: P1 joins on W or ArrowUp, P2 NEVER spawns in solo
-        if (!p1Joined && (keys[keybinds.p1up] || keys['ArrowUp'])) {
+        // Arena mode — local 2-player
+        if (!p1Joined && keys[keybinds.p1up]) {
             p1Joined = true;
             document.getElementById('p1-join').style.display = 'none';
             document.getElementById('p1-controls').style.display = 'block';
         }
-        // P2 only joins in multiplayer (handled by setupAsClient/Host)
-        // Remove old local P2 join
+        // P2 only joins locally (not in online multiplayer — that's handled by setupAsClient/Host)
+        if (!p2Joined && !currentRoom && keys[keybinds.p2up]) {
+            p2Joined = true;
+            document.getElementById('p2-join').style.display = 'none';
+            document.getElementById('p2-controls').style.display = 'block';
+        }
 
         // Timer control (host or offline only)
         if (isHost || !currentRoom) {
@@ -1125,14 +1136,14 @@ function update(dt = 1) {
                 ball.update(ts); checkWallCollision(ball);
             } else {
                 if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); }
-                if (p2Joined && currentRoom) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); }
+                if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); }
             }
             // Host is physics authority for ball
             if (isHost || !currentRoom) {
                 ball.update(ts); checkWallCollision(ball);
                 if (p1Joined) resolveCollision(player1, ball);
-                if (p2Joined && currentRoom) resolveCollision(player2, ball);
-                if (p1Joined && p2Joined && currentRoom) resolveCollision(player1, player2);
+                if (p2Joined) resolveCollision(player2, ball);
+                if (p1Joined && p2Joined) resolveCollision(player1, player2);
             }
             // Dribble timer
             if (!ball.isTouchingWall && currentDribbler && !currentDribbler.isTouchingWall && !settingsModified) {
@@ -1179,7 +1190,7 @@ function draw() {
         ctx.beginPath(); ctx.moveTo(lx+cr,ty); ctx.lineTo(rx-cr,ty); ctx.arcTo(rx,ty,rx,ty+cr,cr); ctx.lineTo(rx,gT); ctx.lineTo(rx+gw,gT); ctx.lineTo(rx+gw,gB); ctx.lineTo(rx,gB); ctx.lineTo(rx,by-cr); ctx.arcTo(rx,by,rx-cr,by,cr); ctx.lineTo(lx+cr,by); ctx.arcTo(lx,by,lx,by-cr,cr); ctx.lineTo(lx,gB); ctx.lineTo(lx-gw,gB); ctx.lineTo(lx-gw,gT); ctx.lineTo(lx,gT); ctx.lineTo(lx,ty+cr); ctx.arcTo(lx,ty,lx+cr,ty,cr); ctx.stroke();
         effects.forEach(e => e.draw());
         if (p1Joined) player1.draw();
-        if (p2Joined && currentRoom) player2.draw();
+        if (p2Joined) player2.draw();
         ball.draw();
     }
     particles.forEach(p => p.draw()); effects.forEach(e => e.draw());
@@ -1192,7 +1203,7 @@ function draw() {
             ctx.fillStyle = config.colors.blue; ctx.fillRect(40*gameScale, canvas.height - 40*gameScale - player1.boost * 1.6 * gameScale, gW, player1.boost * 1.6 * gameScale);
             if (player1.hasJump) { ctx.beginPath(); ctx.arc(46*gameScale, canvas.height-235*gameScale, 4*gameScale, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.shadowBlur = 10*gameScale; ctx.shadowColor = config.colors.blue; ctx.fill(); ctx.shadowBlur = 0; }
         }
-        if (p2Joined && currentRoom) {
+        if (p2Joined) {
             ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(canvas.width - 52*gameScale, canvas.height - 220*gameScale, gW, ghBar);
             ctx.fillStyle = config.colors.orange; ctx.fillRect(canvas.width - 52*gameScale, canvas.height - 40*gameScale - player2.boost * 1.6 * gameScale, gW, player2.boost * 1.6 * gameScale);
             if (player2.hasJump) { ctx.beginPath(); ctx.arc(canvas.width - 46*gameScale, canvas.height-235*gameScale, 4*gameScale, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.shadowBlur = 10*gameScale; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0; }
