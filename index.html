@@ -639,89 +639,86 @@ function checkWallCollision(e) {
         if (e.pos.x > arenaX + arenaWidth - e.radius) { e.pos.x = arenaX + arenaWidth - e.radius; e.vel.x *= -0.6; e.isTouchingWall = true; }
         return;
     }
-    // Wall thickness matches visual line (10 * gameScale, so half = 5 * gameScale inset)
+
     const wallT = 5 * gameScale;
     const lx = arenaX + wallT, rx = arenaX + arenaWidth - wallT;
-    const ty = arenaY + wallT, by = arenaY + arenaHeight - wallT;
+    const ty = arenaY + wallT,  by = arenaY + arenaHeight - wallT;
     const r = e.radius;
-    const gH = config.goalHeight * gameScale, gT = (arenaY + arenaHeight/2) - gH/2, gB = (arenaY + arenaHeight/2) + gH/2;
-    const gw = config.goalWidth * gameScale;
+    const gH  = config.goalHeight * gameScale;
+    const gT  = (arenaY + arenaHeight / 2) - gH / 2;
+    const gB  = (arenaY + arenaHeight / 2) + gH / 2;
+    const gw  = config.goalWidth * gameScale;
     const res = 0.88;
+    const cr  = config.cornerRadius * gameScale;
 
-    // Top / bottom walls
-    if (e.pos.y - r < ty) { e.pos.y = ty + r; e.vel.y = Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
-    if (e.pos.y + r > by) { e.pos.y = by - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
-
-    // Left wall — allow passage through goal opening
-    if (e.pos.x - r < lx) {
-        const inGoal = e.pos.y > gT && e.pos.y < gB;
-        if (!inGoal) {
-            e.pos.x = lx + r; e.vel.x = Math.abs(e.vel.x) * res;
-            if (e instanceof Player) e.isTouchingWall = true;
-        } else {
-            // Inside goal on left side: cap at goal back wall
-            if (e.pos.x - r < arenaX - gw + wallT) { e.pos.x = arenaX - gw + wallT + r; e.vel.x = Math.abs(e.vel.x) * res; }
-            // Goal top/bottom inner walls (goalpost posts)
-            if (e.pos.y - r < gT && e.pos.x < lx + r * 2) { e.pos.y = gT + r; e.vel.y = Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
-            if (e.pos.y + r > gB && e.pos.x < lx + r * 2) { e.pos.y = gB - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
-        }
-    }
-    // Right wall
-    if (e.pos.x + r > rx) {
-        const inGoal = e.pos.y > gT && e.pos.y < gB;
-        if (!inGoal) {
-            e.pos.x = rx - r; e.vel.x = -Math.abs(e.vel.x) * res;
-            if (e instanceof Player) e.isTouchingWall = true;
-        } else {
-            if (e.pos.x + r > arenaX + arenaWidth + gw - wallT) { e.pos.x = arenaX + arenaWidth + gw - wallT - r; e.vel.x = -Math.abs(e.vel.x) * res; }
-            if (e.pos.y - r < gT && e.pos.x > rx - r * 2) { e.pos.y = gT + r; e.vel.y = Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
-            if (e.pos.y + r > gB && e.pos.x > rx - r * 2) { e.pos.y = gB - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
-        }
-    }
-
-    // Corner rounding — concave arc corners. Corner center is at distance `cr` from each adjacent wall.
-    // The arc wall surface sits at distance `cr` from the corner centre.
-    // Entity (radius r) must not get closer than `cr - r` to corner centre.
-    const cr = config.cornerRadius * gameScale;
-    const corners = [
-        { x: lx + cr, y: ty + cr },   // top-left
-        { x: rx - cr, y: ty + cr },   // top-right
-        { x: lx + cr, y: by - cr },   // bottom-left
-        { x: rx - cr, y: by - cr }    // bottom-right
+    // ── 1. CORNERS FIRST ────────────────────────────────────────────────────────
+    // Each corner has a concave arc of radius `cr`.  The entity (radius r) must
+    // stay at distance ≥ (cr - r) from the corner centre.
+    // We check corners before the flat walls so there is no double-correction.
+    let handledByCorner = false;
+    const cornerCentres = [
+        { x: lx + cr, y: ty + cr },
+        { x: rx - cr, y: ty + cr },
+        { x: lx + cr, y: by - cr },
+        { x: rx - cr, y: by - cr }
     ];
-    corners.forEach(c => {
-        // Only act when entity is in the corner quadrant (past both flat walls)
-        const inQuadX = (c.x === lx + cr) ? (e.pos.x < c.x) : (e.pos.x > c.x);
-        const inQuadY = (c.y === ty + cr) ? (e.pos.y < c.y) : (e.pos.y > c.y);
+    cornerCentres.forEach(c => {
+        const inQuadX = (c.x < arenaX + arenaWidth / 2) ? (e.pos.x < c.x) : (e.pos.x > c.x);
+        const inQuadY = (c.y < arenaY + arenaHeight / 2) ? (e.pos.y < c.y) : (e.pos.y > c.y);
         if (!inQuadX || !inQuadY) return;
         const d = e.pos.dist(c);
-        // Push when inside the arc (d < cr means entity centre crossed the arc surface)
-        if (d < cr && d > 0) {
+        if (d < cr - r && d > 0) {
             const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d;
-            // Place entity just inside the arc surface
             e.pos.x = c.x + nx * (cr - r);
             e.pos.y = c.y + ny * (cr - r);
             const dot = e.vel.x * nx + e.vel.y * ny;
             if (dot < 0) { e.vel.x -= (1 + res) * dot * nx; e.vel.y -= (1 + res) * dot * ny; }
             if (e instanceof Player) e.isTouchingWall = true;
+            handledByCorner = true;
         }
     });
-    // Goalpost square corners — solid rectangles at each post position
-    // Each post is a square of size postS x postS, positioned at the field edge
-    const postS = 10 * gameScale; // square post half-size
+
+    // ── 2. FLAT WALLS (skip if corner already resolved this frame) ───────────────
+    if (!handledByCorner) {
+        // Top / bottom
+        if (e.pos.y - r < ty) { e.pos.y = ty + r; e.vel.y =  Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+        if (e.pos.y + r > by) { e.pos.y = by - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+
+        // Left wall
+        if (e.pos.x - r < lx) {
+            const inGoal = e.pos.y > gT && e.pos.y < gB;
+            if (!inGoal) {
+                e.pos.x = lx + r; e.vel.x = Math.abs(e.vel.x) * res;
+                if (e instanceof Player) e.isTouchingWall = true;
+            } else {
+                if (e.pos.x - r < arenaX - gw + wallT) { e.pos.x = arenaX - gw + wallT + r; e.vel.x = Math.abs(e.vel.x) * res; }
+            }
+        }
+        // Right wall
+        if (e.pos.x + r > rx) {
+            const inGoal = e.pos.y > gT && e.pos.y < gB;
+            if (!inGoal) {
+                e.pos.x = rx - r; e.vel.x = -Math.abs(e.vel.x) * res;
+                if (e instanceof Player) e.isTouchingWall = true;
+            } else {
+                if (e.pos.x + r > arenaX + arenaWidth + gw - wallT) { e.pos.x = arenaX + arenaWidth + gw - wallT - r; e.vel.x = -Math.abs(e.vel.x) * res; }
+            }
+        }
+    }
+
+    // ── 3. GOALPOST SQUARES ──────────────────────────────────────────────────────
+    // Half-size of the post square = half the visual line width (wallT = 5*gameScale)
+    const postH = wallT; // 5 * gameScale — sits flush inside the wall
     posts.forEach(p => {
-        // p.x is the field edge (lx or rx), p.y is top or bottom of goal opening
-        // Determine which side
-        const isLeft = (p.x < arenaX + arenaWidth / 2);
-        // Post rect: on left side it sits just inside-left of lx; on right side just inside-right of rx
-        const px = isLeft ? lx - postS : rx;
-        const py = p.y - postS;
-        const pw = postS * 2, ph = postS * 2;
-        // AABB circle vs rect
+        // p.x = arenaX (left) or arenaX+arenaWidth (right), p.y = gT or gB
+        // Centre the post square on the wall line, straddling inside/outside
+        const px = p.x - postH;  // left edge of post rect
+        const py = p.y - postH;  // top edge of post rect
+        const pw = postH * 2, ph = postH * 2;
         const nearX = Math.max(px, Math.min(e.pos.x, px + pw));
         const nearY = Math.max(py, Math.min(e.pos.y, py + ph));
         const dx = e.pos.x - nearX, dy = e.pos.y - nearY;
-        const dist = Math.sqrt(dx*dx + dy*dy);
+        const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < r && dist > 0) {
             const nx = dx / dist, ny = dy / dist;
             e.pos.x = nearX + nx * r;
@@ -731,7 +728,8 @@ function checkWallCollision(e) {
             if (e instanceof Player) e.isTouchingWall = true;
         }
     });
-    // Goal scoring — host only
+
+    // ── 4. GOAL SCORING ──────────────────────────────────────────────────────────
     if (e instanceof Ball && resetDelay <= 0 && countdown <= 0 && (isHost || !currentRoom)) {
         if (e.pos.x + r < lx && e.pos.y > gT && e.pos.y < gB) scoreGoal('orange');
         else if (e.pos.x - r > rx && e.pos.y > gT && e.pos.y < gB) scoreGoal('blue');
@@ -920,12 +918,13 @@ socket.on('opponentDisconnected', () => {
 socket.on('remoteInput', (rk) => {
     for (const key in remoteKeys) remoteKeys[key] = false;
     if (isHost) {
-        if (rk['KeyW']     || rk['ArrowUp'])    remoteKeys['ArrowUp']    = true;
-        if (rk['KeyS']     || rk['ArrowDown'])  remoteKeys['ArrowDown']  = true;
-        if (rk['KeyA']     || rk['ArrowLeft'])  remoteKeys['ArrowLeft']  = true;
-        if (rk['KeyD']     || rk['ArrowRight']) remoteKeys['ArrowRight'] = true;
-        if (rk['KeyR']     || rk['Comma'])      remoteKeys['Comma']      = true;
-        if (rk['KeyT']     || rk['Period'])     remoteKeys['Period']     = true;
+        // Accept both WASD (p1 keybinds) and arrow keys from the client for P2
+        if (rk[keybinds.p1up]   || rk['ArrowUp'])    remoteKeys[keybinds.p2up]    = true;
+        if (rk[keybinds.p1down] || rk['ArrowDown'])  remoteKeys[keybinds.p2down]  = true;
+        if (rk[keybinds.p1left] || rk['ArrowLeft'])  remoteKeys[keybinds.p2left]  = true;
+        if (rk[keybinds.p1right]|| rk['ArrowRight']) remoteKeys[keybinds.p2right] = true;
+        if (rk[keybinds.p1boost]|| rk['Comma'])      remoteKeys[keybinds.p2boost] = true;
+        if (rk[keybinds.p1jump] || rk['Period'])     remoteKeys[keybinds.p2jump]  = true;
     }
 });
 
@@ -1111,7 +1110,7 @@ function update(dt = 1) {
             else                 types = ['ring','spike','block','moving','crusher','laser','wrecking'];
             const chosenType = types[Math.floor(Math.random() * types.length)];
             trialObstacles.push(new TrialObstacle(arenaX + arenaWidth + 80, chosenType));
-            nextObsDist = trialDistance + (280 + Math.random() * 380) * (1 - speedRatio / 1.8);
+            nextObsDist = trialDistance + Math.max(300, (280 + Math.random() * 380) * (1 - speedRatio / 1.8));
         }
         player1.boost = 112; // infinite boost
         player1.handleInput(ts); player1.update(ts); checkWallCollision(player1);
@@ -1138,7 +1137,12 @@ function update(dt = 1) {
 
         // Timer control (host or offline only)
         if (isHost || !currentRoom) {
-            if (resetDelay > 0) { resetDelay -= ts; if (resetDelay <= 0) { timeScale = 1.0; goalMsgEl.style.opacity = 0; resetPositions(); startCountdown(); } }
+            if (resetDelay > 0) { resetDelay -= ts; if (resetDelay <= 0) {
+                timeScale = 1.0; goalMsgEl.style.opacity = 0; resetPositions();
+                // Re-apply multiplayer control overrides after reset
+                if (currentRoom && isHost && player1) player1.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost };
+                startCountdown();
+            }}
             if (countdown > 0) {
                 countdown -= ts;
                 if (countdown > 120) countdownMsgEl.innerText = '3';
@@ -1214,12 +1218,12 @@ function draw() {
         ctx.strokeStyle = config.colors.border; ctx.lineWidth = 10 * gameScale; ctx.lineCap = 'square';
         ctx.beginPath(); ctx.moveTo(lx+cr,ty); ctx.lineTo(rx-cr,ty); ctx.arcTo(rx,ty,rx,ty+cr,cr); ctx.lineTo(rx,gT); ctx.lineTo(rx+gw,gT); ctx.lineTo(rx+gw,gB); ctx.lineTo(rx,gB); ctx.lineTo(rx,by-cr); ctx.arcTo(rx,by,rx-cr,by,cr); ctx.lineTo(lx+cr,by); ctx.arcTo(lx,by,lx,by-cr,cr); ctx.lineTo(lx,gB); ctx.lineTo(lx-gw,gB); ctx.lineTo(lx-gw,gT); ctx.lineTo(lx,gT); ctx.lineTo(lx,ty+cr); ctx.arcTo(lx,ty,lx+cr,ty,cr); ctx.stroke();
         // Draw solid square goalpost corners (fills the gap at the junction)
-        const postS = 5 * gameScale;
+        const postH = wallT; // matches physics post size exactly
         ctx.fillStyle = config.colors.border;
-        ctx.fillRect(lx - postS, gT - postS, postS * 2, postS * 2); // left top post
-        ctx.fillRect(lx - postS, gB - postS, postS * 2, postS * 2); // left bottom post
-        ctx.fillRect(rx - postS, gT - postS, postS * 2, postS * 2); // right top post
-        ctx.fillRect(rx - postS, gB - postS, postS * 2, postS * 2); // right bottom post
+        ctx.fillRect(lx - postH, gT - postH, postH * 2, postH * 2); // left top post
+        ctx.fillRect(lx - postH, gB - postH, postH * 2, postH * 2); // left bottom post
+        ctx.fillRect(rx - postH, gT - postH, postH * 2, postH * 2); // right top post
+        ctx.fillRect(rx - postH, gB - postH, postH * 2, postH * 2); // right bottom post
         effects.forEach(e => e.draw());
         if (p1Joined) player1.draw();
         if (p2Joined) player2.draw();
