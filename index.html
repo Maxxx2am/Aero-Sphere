@@ -516,9 +516,10 @@ class TrialObstacle {
         ctx.globalAlpha = 1;
     }
     checkCollision(p) {
+        const r = p.radius * 0.85; // slightly more forgiving hitbox
         if (this.type === 'ring') {
-            if (p.pos.x + p.radius > this.x && p.pos.x - p.radius < this.x + this.w) {
-                const inGap = p.pos.y - p.radius > this.gapY && p.pos.y + p.radius < this.gapY + this.gapS;
+            if (p.pos.x + r > this.x && p.pos.x - r < this.x + this.w) {
+                const inGap = p.pos.y - r > this.gapY && p.pos.y + r < this.gapY + this.gapS;
                 if (!inGap) {
                     const backX = p.pos.x + Math.cos(p.currentAngle + Math.PI) * p.radius;
                     const backY = p.pos.y + Math.sin(p.currentAngle + Math.PI) * p.radius;
@@ -530,8 +531,8 @@ class TrialObstacle {
             }
         } else if (this.type === 'spike' || this.type === 'block' || this.type === 'moving') {
             const obs = { x: this.x, y: this.y, w: this.w, h: this.h };
-            if (p.pos.x + p.radius > obs.x && p.pos.x - p.radius < obs.x + obs.w &&
-                p.pos.y + p.radius > obs.y && p.pos.y - p.radius < obs.y + obs.h) {
+            if (p.pos.x + r > obs.x && p.pos.x - r < obs.x + obs.w &&
+                p.pos.y + r > obs.y && p.pos.y - r < obs.y + obs.h) {
                 const backX = p.pos.x + Math.cos(p.currentAngle + Math.PI) * p.radius;
                 const backY = p.pos.y + Math.sin(p.currentAngle + Math.PI) * p.radius;
                 if (backX > obs.x && backX < obs.x + obs.w && backY > obs.y && backY < obs.y + obs.h) return 'reset';
@@ -542,14 +543,15 @@ class TrialObstacle {
             const topH = this.centerY - gh - arenaY;
             const botY = this.centerY + gh;
             // Top block
-            if (topH > 0 && p.pos.x + p.radius > this.x && p.pos.x - p.radius < this.x + this.w &&
-                p.pos.y - p.radius < arenaY + topH && p.pos.y + p.radius > arenaY) return 'hit';
+            if (topH > 0 && p.pos.x + r > this.x && p.pos.x - r < this.x + this.w &&
+                p.pos.y - r < arenaY + topH && p.pos.y + r > arenaY) return 'hit';
             // Bottom block
-            if (p.pos.x + p.radius > this.x && p.pos.x - p.radius < this.x + this.w &&
-                p.pos.y + p.radius > botY && p.pos.y - p.radius < arenaY + arenaHeight) return 'hit';
+            if (p.pos.x + r > this.x && p.pos.x - r < this.x + this.w &&
+                p.pos.y + r > botY && p.pos.y - r < arenaY + arenaHeight) return 'hit';
         } else if (this.type === 'laser') {
             if (!this.isOpen) {
-                if (p.pos.y + p.radius > this.y - this.h && p.pos.y - p.radius < this.y + this.h) return 'hit';
+                const laserH = this.h * 0.5; // tighter laser hitbox
+                if (p.pos.y + r > this.y - laserH && p.pos.y - r < this.y + laserH) return 'hit';
             }
         }
         return null;
