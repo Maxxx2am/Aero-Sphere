@@ -788,6 +788,8 @@ function startTrials() {
     document.getElementById('scoreboard').style.display = 'none';
     document.getElementById('p1-controls').style.display = 'none';
     document.getElementById('p2-controls').style.display = 'none';
+    document.getElementById('p1-join').style.display = 'none';
+    document.getElementById('p2-join').style.display = 'none';
     particles.length = 0; effects.length = 0;
 }
 
@@ -796,6 +798,9 @@ function endTrials() {
     const metres = Math.floor(trialDistance / 100);
     trialsHUD.style.display = 'none';
     document.getElementById('scoreboard').style.display = 'block';
+    // Restore join prompts if needed
+    if (!p1Joined) document.getElementById('p1-join').style.display = 'block';
+    if (!p2Joined && !currentRoom) document.getElementById('p2-join').style.display = 'block';
     // Game over screen
     goDistBig.innerText = metres;
     const best = (globalLeaderboard.trials || []).length > 0 ? globalLeaderboard.trials[0].score : 0;
