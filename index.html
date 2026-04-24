@@ -327,8 +327,8 @@ class Player extends Entity {
             const power = this.isTouchingWall ? config.enginePower : config.enginePower * 0.3;
             this.applyForce(new Vector2D(dx * power * gameScale, 0));
         }
-        const boostKey = keys[this.controls.boost] || (this.controls.boost2 && keys[this.controls.boost2]);
-        const jumpKey  = keys[this.controls.jump]  || (this.controls.jump2  && keys[this.controls.jump2]);
+        const boostKey = keys[this.controls.boost] || (this.controls.boost2 && keys[this.controls.boost2]) || (this === player2 && keys['ShiftRight']);
+        const jumpKey  = keys[this.controls.jump]  || (this.controls.jump2  && keys[this.controls.jump2])  || (this === player2 && (keys['Slash'] || keys['ShiftRight']));
         // Boost — infinite in trials, limited in arena
         const hasBoost = gameState === 'trials' ? true : this.boost > 0;
         if (boostKey && hasBoost) {
@@ -339,7 +339,10 @@ class Player extends Entity {
         if (this.isRecharging) this.boost = Math.min(112, this.boost + 1.35 * ts);
         if (this.isTouchingWall) { this.jumps = gameState === 'trials' ? 3 : 1; this.hasJump = true; }
         if (jumpKey && !this.jumping && (this.jumps > 0 || this.hasJump) && this.jumpCooldown <= 0) {
-            this.applyForce(new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(5.5 * gameScale));
+            const jumpDir = new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle));
+            // If on ground and not aiming up, give a vertical boost so they actually leave the floor
+            if (this.isTouchingGround && jumpDir.y > -0.5) { jumpDir.y = -0.75; jumpDir.x *= 0.5; }
+            this.applyForce(jumpDir.mult(5.8 * gameScale));
             this.jumping = true; this.jumps--; this.hasJump = false; this.jumpCooldown = 30;
             effects.push(new JumpAura(this.pos.x, this.pos.y));
         }
