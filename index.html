@@ -444,64 +444,35 @@ function checkWallCollision(e) {
     const lx = arenaX, rx = arenaX + arenaWidth, ty = arenaY, by = arenaY + arenaHeight, r = e.radius;
     const gH = config.goalHeight * gameScale, gT = ty + arenaHeight / 2 - gH / 2, gB = ty + arenaHeight / 2 + gH / 2;
     const res = 0.88;
-    const cr = config.cornerRadius * gameScale;
-
-    // Corner rounding logic
-    let inCorner = false;
-    const corners = [
-        { x: lx + cr, y: ty + cr, dx: -1, dy: -1 },
-        { x: rx - cr, y: ty + cr, dx: 1, dy: -1 },
-        { x: lx + cr, y: by - cr, dx: -1, dy: 1 },
-        { x: rx - cr, y: by - cr, dx: 1, dy: 1 }
-    ];
-
-    for (const c of corners) {
-        if ((c.dx < 0 ? e.pos.x < c.x : e.pos.x > c.x) && (c.dy < 0 ? e.pos.y < c.y : e.pos.y > c.y)) {
-            inCorner = true;
-            const d = e.pos.dist(c);
-            if (d > cr - r) {
-                const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d;
-                e.pos.x = c.x + nx * (cr - r);
-                e.pos.y = c.y + ny * (cr - r);
-                const dot = e.vel.x * nx + e.vel.y * ny;
-                if (dot > 0) { e.vel.x -= 2 * dot * nx * res; e.vel.y -= 2 * dot * ny * res; }
-                if (e instanceof Player) e.isTouchingWall = true;
-            }
-            break;
-        }
-    }
-
-    if (!inCorner) {
-        // Horizontal walls
-        if (e.pos.y < ty + r) { e.pos.y = ty + r; e.vel.y *= -res; if (e instanceof Player) e.isTouchingWall = true; }
-        else if (e.pos.y > by - r) { e.pos.y = by - r; e.vel.y *= -res; if (e instanceof Player) e.isTouchingWall = true; }
-
-        // Vertical walls & Goals
+    if (e.pos.y > by - r) { e.pos.y = by - r; e.vel.y *= -res; if (e instanceof Player) { e.isTouchingWall = true; } }
+    if (e.pos.y < ty + r) { e.pos.y = ty + r; e.vel.y *= -res; if (e instanceof Player) e.isTouchingWall = true; }
+    if (e.pos.x < lx || e.pos.x > rx) {
         if (e.pos.y > gT && e.pos.y < gB) {
             const gw = config.goalWidth * gameScale;
             if (e.pos.x - r < lx - gw) { e.pos.x = lx - gw + r; e.vel.x *= -res; }
-            else if (e.pos.x + r > rx + gw) { e.pos.x = rx + gw - r; e.vel.x *= -res; }
+            if (e.pos.x + r > rx + gw) { e.pos.x = rx + gw - r; e.vel.x *= -res; }
         } else {
-            if (e.pos.x < lx + r) { e.pos.x = lx + r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
-            else if (e.pos.x > rx - r) { e.pos.x = rx - r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
+            if (e.pos.x < lx) { e.pos.x = lx + r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
+            if (e.pos.x > rx) { e.pos.x = rx - r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
         }
+    } else {
+        if (e.pos.x - r < lx && !(e.pos.y > gT && e.pos.y < gB)) { e.pos.x = lx + r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
+        if (e.pos.x + r > rx && !(e.pos.y > gT && e.pos.y < gB)) { e.pos.x = rx - r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
     }
-
-    posts.forEach(p => {
-        const dx = Math.abs(e.pos.x - p.x), dy = Math.abs(e.pos.y - p.y);
-        if (dx < r && dy < r) {
-            if (dx > dy) { e.pos.x = p.x + (e.pos.x > p.x ? r : -r); e.vel.x *= -res; }
-            else { e.pos.y = p.y + (e.pos.y > p.y ? r : -r); e.vel.y *= -res; }
-            if (e instanceof Player) e.isTouchingWall = true;
-        }
+    // Corner rounding
+    const cr = config.cornerRadius * gameScale;
+    [{ x: lx + cr, y: ty + cr }, { x: rx - cr, y: ty + cr }, { x: lx + cr, y: by - cr }, { x: rx - cr, y: by - cr }].forEach(c => {
+        const isCorner = (c.x === lx + cr && e.pos.x < c.x && (c.y === ty + cr ? e.pos.y < c.y : e.pos.y > c.y)) || (c.x === rx - cr && e.pos.x > c.x && (c.y === ty + cr ? e.pos.y < c.y : e.pos.y > c.y));
+        if (!isCorner) return;
+        const d = e.pos.dist(c);
+        if (d < cr - r) { const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d; e.pos.x = c.x + nx * (cr - r); e.pos.y = c.y + ny * (cr - r); const dot = e.vel.x * nx + e.vel.y * ny; if (dot > 0) { e.vel.x -= 2 * dot * nx * res; e.vel.y -= 2 * dot * ny * res; } if (e instanceof Player) e.isTouchingWall = true; }
     });
-
+    posts.forEach(p => { const dx = Math.abs(e.pos.x - p.x), dy = Math.abs(e.pos.y - p.y); if (dx < r && dy < r) { if (dx > dy) { e.pos.x = p.x + (e.pos.x > p.x ? r : -r); e.vel.x *= -res; } else { e.pos.y = p.y + (e.pos.y > p.y ? r : -r); e.vel.y *= -res; } if (e instanceof Player) e.isTouchingWall = true; } });
     // Goal scoring — host only
     if (e instanceof Ball && resetDelay <= 0 && countdown <= 0 && (isHost || !currentRoom)) {
         if (e.pos.x + r < lx && e.pos.y > gT && e.pos.y < gB) scoreGoal('orange');
         else if (e.pos.x - r > rx && e.pos.y > gT && e.pos.y < gB) scoreGoal('blue');
     }
-}
 }
 
 function resolveCollision(a, b) {
