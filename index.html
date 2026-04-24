@@ -18,7 +18,7 @@
         #multiplayer-toggle { right: 160px; }
         #settings-toggle:hover, #trials-toggle:hover, #leaderboard-toggle:hover, #multiplayer-toggle:hover { opacity: 1; }
         
-        #settings-panel, #leaderboard-panel, #multiplayer-panel, #trials-menu { position: absolute; top: 75px; right: 25px; background: rgba(10, 10, 10, 0.98); border: 1px solid #444; padding: 18px; border-radius: 2px; display: none; pointer-events: auto; width: 260px; z-index: 99; }
+        #settings-panel, #leaderboard-panel, #multiplayer-panel { position: absolute; top: 75px; right: 25px; background: rgba(10, 10, 10, 0.98); border: 1px solid #444; padding: 18px; border-radius: 2px; display: none; pointer-events: auto; width: 260px; z-index: 99; }
         #trials-menu { top: 50%; left: 50%; transform: translate(-50%, -50%); width: 320px; text-align: center; }
         #trials-score { position: absolute; top: 100px; left: 50%; transform: translateX(-50%); font-size: 40px; font-weight: 900; color: #fff; display: none; font-family: 'Arial Black', Gadget, sans-serif; text-shadow: 0 0 15px rgba(255,255,255,0.3); z-index: 5; }
         .ui-btn { background: #222; color: #fff; border: 1px solid #444; padding: 12px; font-size: 12px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; letter-spacing: 1px; }
@@ -1215,6 +1215,7 @@ function draw() {
         ctx.fillStyle = hexToRgba(config.colors.blue, 0.15); ctx.fillRect(lx - gw, gT, gw, gH);
         ctx.fillStyle = hexToRgba(config.colors.orange, 0.15); ctx.fillRect(rx, gT, gw, gH);
         // Arena outline (field border + goal sides/top/bottom)
+        const wallT = 5 * gameScale;
         ctx.strokeStyle = config.colors.border; ctx.lineWidth = 10 * gameScale; ctx.lineCap = 'square';
         ctx.beginPath(); ctx.moveTo(lx+cr,ty); ctx.lineTo(rx-cr,ty); ctx.arcTo(rx,ty,rx,ty+cr,cr); ctx.lineTo(rx,gT); ctx.lineTo(rx+gw,gT); ctx.lineTo(rx+gw,gB); ctx.lineTo(rx,gB); ctx.lineTo(rx,by-cr); ctx.arcTo(rx,by,rx-cr,by,cr); ctx.lineTo(lx+cr,by); ctx.arcTo(lx,by,lx,by-cr,cr); ctx.lineTo(lx,gB); ctx.lineTo(lx-gw,gB); ctx.lineTo(lx-gw,gT); ctx.lineTo(lx,gT); ctx.lineTo(lx,ty+cr); ctx.arcTo(lx,ty,lx+cr,ty,cr); ctx.stroke();
         // Draw solid square goalpost corners (fills the gap at the junction)
