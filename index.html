@@ -652,9 +652,12 @@ function checkWallCollision(e) {
     const cr  = config.cornerRadius * gameScale;
 
     // ── 1. CORNERS FIRST ────────────────────────────────────────────────────────
-    // Each corner has a concave arc of radius `cr`.  The entity (radius r) must
-    // stay at distance ≥ (cr - r) from the corner centre.
-    // We check corners before the flat walls so there is no double-correction.
+    // The arena corners are concave arcs of radius cr.
+    // Corner centre sits at (lx+cr, ty+cr) etc.
+    // Entity centre must stay at distance >= (cr - r) from corner centre.
+    // Trigger: entity is in the corner quadrant AND d < cr (inside the arc wall).
+    // Push outward to exactly (cr - r) from corner centre.
+    // Corners run BEFORE flat walls so there is no double-correction fighting.
     let handledByCorner = false;
     const cornerCentres = [
         { x: lx + cr, y: ty + cr },
@@ -667,7 +670,8 @@ function checkWallCollision(e) {
         const inQuadY = (c.y < arenaY + arenaHeight / 2) ? (e.pos.y < c.y) : (e.pos.y > c.y);
         if (!inQuadX || !inQuadY) return;
         const d = e.pos.dist(c);
-        if (d < cr - r && d > 0) {
+        // Entity inside the arc wall → push out to surface
+        if (d < cr && d > 0) {
             const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d;
             e.pos.x = c.x + nx * (cr - r);
             e.pos.y = c.y + ny * (cr - r);
