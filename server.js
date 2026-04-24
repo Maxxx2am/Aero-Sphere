@@ -70,12 +70,22 @@ app.post('/api/leaderboard', (req, res) => {
 });
 
 let socketRooms = {};
+let rooms = {};
 
 io.on('connection', (socket) => {
     socket.on('joinRoom', (roomID) => {
         socket.join(roomID);
         socketRooms[socket.id] = roomID;
+        if (!rooms[roomID]) rooms[roomID] = new Set();
+        rooms[roomID].add(socket.id);
         socket.to(roomID).emit('userJoined');
+    });
+
+    socket.on('getRooms', () => {
+        const open = Object.entries(rooms)
+            .filter(([, sockets]) => sockets.size === 1)
+            .map(([id]) => id);
+        socket.emit('roomsList', open);
     });
 
     socket.on('playerInput', (data) => {
@@ -95,6 +105,10 @@ io.on('connection', (socket) => {
         if (roomID) {
             socket.to(roomID).emit('opponentDisconnected');
             delete socketRooms[socket.id];
+            if (rooms[roomID]) {
+                rooms[roomID].delete(socket.id);
+                if (rooms[roomID].size === 0) delete rooms[roomID];
+            }
         }
     });
 });

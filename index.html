@@ -122,7 +122,15 @@
 
 <div id="multiplayer-panel">
     <label style="font-size: 10px; color: #555; text-transform: uppercase;">Multiplayer Room</label>
-    <div style="margin-bottom: 15px; margin-top: 10px;"><input type="text" id="room-input" placeholder="ROOM ID" maxlength="8" style="background: #000; border: 1px solid #444; color: #fff; padding: 8px; font-size: 12px; width: 100%; margin-bottom: 10px; text-align: center; letter-spacing: 2px;"><div style="display: flex; gap: 5px;"><button id="create-room-btn" style="flex: 1; background: #222; color: #fff; border: 1px solid #444; padding: 10px; font-size: 10px; cursor: pointer; font-weight: bold;">CREATE</button><button id="join-room-btn" style="flex: 1; background: #222; color: #fff; border: 1px solid #444; padding: 10px; font-size: 10px; cursor: pointer; font-weight: bold;">JOIN</button></div></div>
+    <div style="margin-bottom: 10px; margin-top: 10px;">
+        <input type="text" id="room-input" placeholder="ROOM ID" maxlength="8" style="background: #000; border: 1px solid #444; color: #fff; padding: 8px; font-size: 12px; width: 100%; margin-bottom: 8px; text-align: center; letter-spacing: 2px; box-sizing: border-box;">
+        <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+            <button id="create-room-btn" style="flex: 1; background: #222; color: #fff; border: 1px solid #444; padding: 10px; font-size: 10px; cursor: pointer; font-weight: bold;">CREATE</button>
+            <button id="join-room-btn" style="flex: 1; background: #222; color: #fff; border: 1px solid #444; padding: 10px; font-size: 10px; cursor: pointer; font-weight: bold;">JOIN</button>
+        </div>
+        <button id="find-room-btn" style="width: 100%; background: #111; color: #777; border: 1px solid #333; padding: 8px; font-size: 10px; cursor: pointer; font-weight: bold; letter-spacing: 1px;">FIND OPEN ROOMS</button>
+    </div>
+    <div id="open-rooms-list" style="display: none; max-height: 140px; overflow-y: auto; margin-top: 6px;"></div>
     <div id="multi-status" style="font-size: 9px; color: #777; text-align: center; font-style: italic; margin-top: 10px;">OFFLINE MODE</div>
 </div>
 
@@ -174,8 +182,9 @@ const keys = new Proxy(localKeys, {
     ownKeys: (t) => Reflect.ownKeys(t),
     getOwnPropertyDescriptor: (t, p) => Reflect.getOwnPropertyDescriptor(t, p)
 });
-window.addEventListener('keydown', e => { if (e.target.tagName !== 'INPUT') localKeys[e.code] = true; });
-window.addEventListener('keyup',   e => { if (e.target.tagName !== 'INPUT') localKeys[e.code] = false; });
+const P2_KEYS = new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Comma','Period']);
+window.addEventListener('keydown', e => { if (e.target.tagName !== 'INPUT') { if (currentRoom && isHost && P2_KEYS.has(e.code)) return; localKeys[e.code] = true; } });
+window.addEventListener('keyup',   e => { if (e.target.tagName !== 'INPUT') { if (currentRoom && isHost && P2_KEYS.has(e.code)) return; localKeys[e.code] = false; } });
 
 // ─── Game State ───────────────────────────────────────────────────────────────
 let player1, player2, ball, posts = [], p1Joined = false, p2Joined = false;
@@ -562,7 +571,6 @@ socket.on('userJoined', () => {
     if (isHost) {
         multiStatus.innerText = 'PLAYER 2 JOINED ✓';
         multiStatus.style.color = '#2ecc71';
-        if (!p1Joined) { p1Joined = true; document.getElementById('p1-join').style.display = 'none'; document.getElementById('p1-controls').style.display = 'block'; }
         if (!p2Joined) p2Joined = true;
     }
 });
@@ -586,7 +594,7 @@ socket.on('gameStateUpdate', (state) => {
     if (player2) {
         const tp2x = state.p2.x * arenaWidth + arenaX, tp2y = state.p2.y * arenaHeight + arenaY;
         const d2 = Math.hypot(tp2x - player2.pos.x, tp2y - player2.pos.y);
-        if (d2 > 100) { player2.pos.x = tp2x; player2.pos.y = tp2y; player2.vel.x = state.p2.vx * gameScale; player2.vel.y = state.p2.vy * gameScale; }
+        if (d2 > 40) { player2.pos.x = tp2x; player2.pos.y = tp2y; player2.vel.x = state.p2.vx * gameScale; player2.vel.y = state.p2.vy * gameScale; }
         player2.hasJump = state.p2.hasJump;
     }
     scoreBlue = state.scoreB; scoreOrange = state.scoreO;
@@ -642,6 +650,30 @@ function syncMultiplayer() {
     socket.emit('syncGameState', { roomID: currentRoom, state });
 }
 
+function setupAsHost() {
+    p1Joined = true; p2Joined = false;
+    resetPositions();
+    scoreBlue = 0; scoreOrange = 0;
+    scoreBlueEl.innerText = '0'; scoreOrangeEl.innerText = '0';
+    resetDelay = 0; countdown = 0; goTimer = 0;
+    dribbleTime = 0; currentDribbler = null; timerContainer.style.display = 'none';
+    document.getElementById('p1-join').style.display = 'none';
+    document.getElementById('p2-join').style.display = 'none';
+    document.getElementById('p1-controls').style.display = 'block';
+    document.getElementById('p2-controls').style.display = 'none';
+}
+
+function setupAsClient() {
+    p1Joined = true; p2Joined = true;
+    resetPositions();
+    dribbleTime = 0; currentDribbler = null; timerContainer.style.display = 'none';
+    document.getElementById('p1-join').style.display = 'none';
+    document.getElementById('p2-join').style.display = 'none';
+    document.getElementById('p1-controls').style.display = 'none';
+    document.getElementById('p2-controls').style.display = 'block';
+    if (player2) player2.controls = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'KeyT', boost: 'KeyR', up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
+}
+
 document.getElementById('create-room-btn').onclick = () => {
     const roomID = roomInput.value.trim().toUpperCase();
     if (!roomID) return alert('Enter a Room ID');
@@ -650,10 +682,12 @@ document.getElementById('create-room-btn').onclick = () => {
     roomInput.blur();
     currentRoom = roomID; isHost = true;
     socket.emit('joinRoom', roomID);
-    multiStatus.innerText = `HOSTING: ${roomID}`; multiStatus.style.color = '#0074D9';
+    multiStatus.innerText = `HOSTING: ${roomID} — WAITING...`; multiStatus.style.color = '#0074D9';
     document.getElementById('multiplayer-panel').style.display = 'none';
-    if (!p1Joined) { p1Joined = true; document.getElementById('p1-join').style.display = 'none'; document.getElementById('p1-controls').style.display = 'block'; }
+    document.getElementById('open-rooms-list').style.display = 'none';
+    setupAsHost();
 };
+
 document.getElementById('join-room-btn').onclick = () => {
     const roomID = roomInput.value.trim().toUpperCase();
     if (!roomID) return alert('Enter a Room ID');
@@ -664,13 +698,29 @@ document.getElementById('join-room-btn').onclick = () => {
     socket.emit('joinRoom', roomID);
     multiStatus.innerText = `CONNECTED: ${roomID}`; multiStatus.style.color = '#FF851B';
     document.getElementById('multiplayer-panel').style.display = 'none';
-    if (!p2Joined) {
-        p2Joined = true;
-        document.getElementById('p2-join').style.display = 'none';
-        document.getElementById('p2-controls').style.display = 'block';
-        if (player2) player2.controls = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'KeyT', boost: 'KeyR', up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
-    }
+    document.getElementById('open-rooms-list').style.display = 'none';
+    setupAsClient();
 };
+
+function joinRoomById(roomID) {
+    for (const k in localKeys) localKeys[k] = false;
+    for (const k in remoteKeys) remoteKeys[k] = false;
+    currentRoom = roomID; isHost = false;
+    socket.emit('joinRoom', roomID);
+    multiStatus.innerText = `CONNECTED: ${roomID}`; multiStatus.style.color = '#FF851B';
+    document.getElementById('multiplayer-panel').style.display = 'none';
+    document.getElementById('open-rooms-list').style.display = 'none';
+    setupAsClient();
+}
+
+document.getElementById('find-room-btn').onclick = () => { socket.emit('getRooms'); };
+
+socket.on('roomsList', (roomIDs) => {
+    const list = document.getElementById('open-rooms-list');
+    list.style.display = 'block';
+    if (roomIDs.length === 0) { list.innerHTML = '<div style="font-size:10px;color:#555;text-align:center;padding:8px;">NO OPEN ROOMS</div>'; return; }
+    list.innerHTML = roomIDs.map(id => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #222;"><span style="font-size:11px;color:#aaa;letter-spacing:1px;">${id}</span><button onclick="joinRoomById('${id}')" style="background:#222;color:#fff;border:1px solid #444;padding:3px 9px;font-size:9px;cursor:pointer;font-weight:bold;">JOIN</button></div>`).join('');
+});
 
 document.getElementById('multiplayer-toggle').onclick = () => {
     const p = document.getElementById('multiplayer-panel');
@@ -763,7 +813,7 @@ function update(dt = 1) {
         if (resetDelay <= 0 && countdown <= 0 && goTimer <= 0) {
             if (currentRoom && !isHost) {
                 // Client: simulate P2 locally, ball dead reckoning
-                if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); }
+                if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); resolveCollision(player2, ball); }
                 ball.update(ts); checkWallCollision(ball);
             } else {
                 if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); }
