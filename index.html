@@ -94,7 +94,7 @@
 <div id="trials-menu" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:320px; text-align:center; background:rgba(10,10,10,0.98); border:1px solid #333; padding:30px; border-radius:4px; display:none; pointer-events:auto; z-index:99;">
     <div style="font-size:9px; color:#555; letter-spacing:3px; margin-bottom:5px;">GAME MODE</div>
     <h2 style="color: #fff; margin: 0 0 8px; font-size: 22px; letter-spacing: 3px;">AERO-TRIALS</h2>
-    <p style="font-size: 11px; color: #888; margin: 12px 0; line-height: 1.7;">Infinite boost. One jump. Dodge rings and blocks.<br>Hit obstacles with your <span style="color:#fff">engine arc</span> to reset your jump.<br>How far can you go?</p>
+    <p style="font-size: 11px; color: #888; margin: 12px 0; line-height: 1.7;">Infinite boost. One jump. Dodge rings, spikes, lasers, crushers &amp; wrecking balls.<br>Hit obstacles with your <span style="color:#fff">engine arc</span> to reset your jump.<br>New hazards unlock as you go further. How far can you go?</p>
     <button id="begin-trials-btn" class="ui-btn">BEGIN</button>
     <button id="cancel-trials-btn" class="ui-btn cancel">CANCEL</button>
 </div>
@@ -139,12 +139,21 @@
     <div class="setting-row"><label>Boost Power</label><input type="range" id="slider-boost" min="0.1" max="0.5" step="0.01" value="0.22"></div>
     <div class="setting-row"><label>Gravity</label><input type="range" id="slider-weight" min="0.01" max="0.2" step="0.01" value="0.07"></div>
     <div class="setting-row"><label>Damping</label><input type="range" id="slider-friction" min="0.95" max="0.999" step="0.001" value="0.982"></div>
-    <div class="setting-row"><label>Blue Team Color</label><input type="color" id="color-blue" value="#0074D9" style="width: 100%; height: 25px; border: none; background: none; cursor: pointer;"></div>
-    <div class="setting-row"><label>Orange Team Color</label><input type="color" id="color-orange" value="#FF851B" style="width: 100%; height: 25px; border: none; background: none; cursor: pointer;"></div>
-    <button id="how-to-play-btn" style="width: 100%; background: #333; color: #fff; border: 1px solid #444; padding: 10px; cursor: pointer; font-size: 10px; font-weight: bold; margin-top: 10px;">HOW TO PLAY</button>
+    <button id="keybind-btn" style="width: 100%; background: #222; color: #fff; border: 1px solid #444; padding: 10px; cursor: pointer; font-size: 10px; font-weight: bold; margin-top: 10px; letter-spacing: 1px;">KEY BINDINGS</button>
+    <button id="how-to-play-btn" style="width: 100%; background: #333; color: #fff; border: 1px solid #444; padding: 10px; cursor: pointer; font-size: 10px; font-weight: bold; margin-top: 8px;">HOW TO PLAY</button>
 </div>
 
 <div id="how-to-play-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 300; pointer-events: auto;"><div style="background: #111; padding: 30px; border: 2px solid #555; max-width: 450px; max-height: 80vh; overflow-y: auto; line-height: 1.6; color: #ccc; position: relative; border-radius: 8px;"><h2 style="color: #fff; margin-top: 0; text-align: center; font-size: 20px;">WELCOME TO AERO-SPHERE</h2><div style="font-size: 13px;"><p><b>THE GOAL:</b> It's a 1v1 physics battle! Use your <b>Compass Ball</b> to knock the white ball into the recessed goal pockets at either end of the field.</p><p>• <b>Player 1:</b> WASD to Move | R to Boost | T to Jump</p><p>• <b>Player 2:</b> Arrows to Move | , to Boost | . to Jump</p><p><b>PRO MOVES:</b><br>• <b>Directional Jump:</b> Launch where you aim!<br>• <b>Flip Reset:</b> Hit the ball with your engine (back) for a jump/boost reset!<br>• <b>Air Strafe:</b> nudge yourself left/right while in the air.</p><p><b>LEADERBOARD:</b> Keep the ball in the air! Survive without touching walls/floor. Surpass the top record to earn the <b>Gold Trophy</b>! <br><i style="color: #ff4444; font-size: 11px;">Note: Timer is disabled if physics settings are changed.</i></p><p style="text-align: center; margin-top: 30px; font-weight: bold; color: #fff;">Made by Maxxx</p></div><button id="close-how-to" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: #555; font-size: 20px; cursor: pointer;">×</button></div></div>
+
+<div id="keybind-overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);display:none;align-items:center;justify-content:center;z-index:310;pointer-events:auto;">
+  <div style="background:#111;padding:28px 32px;border:2px solid #555;width:420px;max-height:80vh;overflow-y:auto;position:relative;border-radius:8px;color:#ccc;">
+    <h2 style="color:#fff;margin-top:0;text-align:center;font-size:18px;letter-spacing:2px;">KEY BINDINGS</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;margin-top:10px;" id="keybind-grid"></div>
+    <div style="margin-top:18px;font-size:9px;color:#555;text-align:center;letter-spacing:1px;">CLICK A BUTTON THEN PRESS ANY KEY TO REBIND</div>
+    <button id="reset-keybinds-btn" style="width:100%;background:#222;color:#888;border:1px solid #333;padding:8px;cursor:pointer;font-size:9px;font-weight:bold;margin-top:12px;letter-spacing:1px;">RESET TO DEFAULTS</button>
+    <button id="close-keybind" style="position:absolute;top:10px;right:10px;background:none;border:none;color:#555;font-size:22px;cursor:pointer;">×</button>
+  </div>
+</div>
 
 <div id="settings-warning" style="position: absolute; top: 160px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #ff4444; display: none; font-weight: bold; letter-spacing: 1px; z-index: 4;">CUSTOM PHYSICS: TIMER DISABLED</div>
 
@@ -183,10 +192,77 @@ const keys = new Proxy(localKeys, {
     getOwnPropertyDescriptor: (t, p) => Reflect.getOwnPropertyDescriptor(t, p)
 });
 const P2_KEYS = new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Comma','Period']);
-window.addEventListener('keydown', e => { if (e.target.tagName !== 'INPUT') { if (currentRoom && isHost && P2_KEYS.has(e.code)) return; localKeys[e.code] = true; } });
-window.addEventListener('keyup',   e => { if (e.target.tagName !== 'INPUT') { if (currentRoom && isHost && P2_KEYS.has(e.code)) return; localKeys[e.code] = false; } });
+window.addEventListener('keydown', e => {
+    if (e.target.tagName !== 'INPUT') {
+        // In multiplayer as host, P2 arrows come from remote — ignore local
+        if (currentRoom && isHost && P2_KEYS.has(e.code)) return;
+        // Capture rebind
+        if (rebindTarget) { finishRebind(e.code); e.preventDefault(); return; }
+        localKeys[e.code] = true;
+        e.preventDefault();
+    }
+});
+window.addEventListener('keyup', e => {
+    if (e.target.tagName !== 'INPUT') {
+        if (currentRoom && isHost && P2_KEYS.has(e.code)) return;
+        localKeys[e.code] = false;
+    }
+});
 
-// ─── Game State ───────────────────────────────────────────────────────────────
+// ─── Keybinds ─────────────────────────────────────────────────────────────────
+const DEFAULT_KEYBINDS = {
+    p1up:'KeyW', p1down:'KeyS', p1left:'KeyA', p1right:'KeyD', p1jump:'KeyT', p1boost:'KeyR',
+    p2up:'ArrowUp', p2down:'ArrowDown', p2left:'ArrowLeft', p2right:'ArrowRight', p2jump:'Period', p2boost:'Comma'
+};
+let keybinds = JSON.parse(localStorage.getItem('aeroKeybinds') || 'null') || {...DEFAULT_KEYBINDS};
+let rebindTarget = null;
+
+function saveKeybinds() { localStorage.setItem('aeroKeybinds', JSON.stringify(keybinds)); applyKeybindsToPlayers(); }
+function applyKeybindsToPlayers() {
+    if (player1) player1.controls = { up:keybinds.p1up, down:keybinds.p1down, left:keybinds.p1left, right:keybinds.p1right, jump:keybinds.p1jump, boost:keybinds.p1boost };
+    if (player2 && (!currentRoom || isHost)) player2.controls = { up:keybinds.p2up, down:keybinds.p2down, left:keybinds.p2left, right:keybinds.p2right, jump:keybinds.p2jump, boost:keybinds.p2boost };
+    // Update P2_KEYS set to match current binds
+    P2_KEYS.clear();
+    ['p2up','p2down','p2left','p2right','p2jump','p2boost'].forEach(k => P2_KEYS.add(keybinds[k]));
+}
+
+function keyLabel(code) {
+    if (!code) return '?';
+    return code.replace('Key','').replace('Arrow','↑↓←→'.split('')[['Up','Down','Left','Right'].indexOf(code.replace('Arrow',''))] || code.replace('Arrow','')).replace('Digit','').replace('Numpad','NUM').replace('Period','.').replace('Comma',',').replace('Semicolon',';').replace('Space','SPC').replace('Shift','SHIFT').replace('Control','CTRL').replace('Alt','ALT');
+}
+
+const KEYBIND_DEFS = [
+    {id:'p1up',label:'P1 UP'},{id:'p1down',label:'P1 DOWN'},{id:'p1left',label:'P1 LEFT'},{id:'p1right',label:'P1 RIGHT'},
+    {id:'p1jump',label:'P1 JUMP'},{id:'p1boost',label:'P1 BOOST'},
+    {id:'p2up',label:'P2 UP'},{id:'p2down',label:'P2 DOWN'},{id:'p2left',label:'P2 LEFT'},{id:'p2right',label:'P2 RIGHT'},
+    {id:'p2jump',label:'P2 JUMP'},{id:'p2boost',label:'P2 BOOST'}
+];
+
+function buildKeybindUI() {
+    const grid = document.getElementById('keybind-grid');
+    grid.innerHTML = KEYBIND_DEFS.map(({id,label}) => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1a1a1a;">
+            <span style="font-size:9px;color:#555;letter-spacing:1px;">${label}</span>
+            <button class="kb-btn" data-id="${id}" style="background:#1a1a1a;color:#fff;border:1px solid #333;padding:4px 10px;font-size:11px;cursor:pointer;font-family:'Courier New',monospace;min-width:52px;font-weight:bold;">${keyLabel(keybinds[id])}</button>
+        </div>
+    `).join('');
+    grid.querySelectorAll('.kb-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (rebindTarget) { document.querySelector(`.kb-btn[data-id="${rebindTarget}"]`).style.background = '#1a1a1a'; }
+            rebindTarget = btn.dataset.id;
+            btn.style.background = '#0074D9';
+            btn.innerText = '...';
+        });
+    });
+}
+function finishRebind(code) {
+    keybinds[rebindTarget] = code;
+    saveKeybinds();
+    buildKeybindUI();
+    rebindTarget = null;
+}
+
+
 let player1, player2, ball, posts = [], p1Joined = false, p2Joined = false;
 let currentDribbler = null, dribbleTime = 0, playerName = localStorage.getItem('aeroPlayerName') || '';
 let globalLeaderboard = { dribble: [], trials: [] }, leaderboardType = 'dribble';
@@ -310,72 +386,150 @@ class Ball extends Entity {
 class TrialObstacle {
     constructor(x, type) {
         this.x = x; this.type = type; this.w = 55 * gameScale; this.passed = false;
+        const speedRatio = Math.min(1, (trialSpeed - TRIAL_BASE_SPEED) / (TRIAL_MAX_SPEED - TRIAL_BASE_SPEED));
+
         if (type === 'ring') {
-            // ring: two walls with a gap — gap size shrinks as speed increases
             const minGap = 160 * gameScale, maxGap = 320 * gameScale;
-            const speedRatio = Math.min(1, (trialSpeed - TRIAL_BASE_SPEED) / (TRIAL_MAX_SPEED - TRIAL_BASE_SPEED));
             this.gapS = maxGap - speedRatio * (maxGap - minGap);
             this.gapY = arenaY + 80 * gameScale + Math.random() * (arenaHeight - 160 * gameScale - this.gapS);
         } else if (type === 'spike') {
-            // spike: tall pillar from top or bottom, narrower
             this.w = 40 * gameScale;
             this.fromTop = Math.random() > 0.5;
             this.h = (180 + Math.random() * 180) * gameScale;
             this.y = this.fromTop ? arenaY : arenaY + arenaHeight - this.h;
-        } else {
-            // block: floating block in the middle
+        } else if (type === 'block') {
             this.w = (80 + Math.random() * 60) * gameScale;
             this.h = (80 + Math.random() * 80) * gameScale;
             this.y = arenaY + 60 * gameScale + Math.random() * (arenaHeight - 120 * gameScale - this.h);
+        } else if (type === 'moving') {
+            // Vertically moving block
+            this.w = 50 * gameScale; this.h = 90 * gameScale;
+            this.baseY = arenaY + 80 * gameScale + Math.random() * (arenaHeight - 200 * gameScale);
+            this.y = this.baseY;
+            this.moveAmp = (80 + Math.random() * 120) * gameScale;
+            this.moveSpd = 2 + Math.random() * 2;
+            this.phase = Math.random() * Math.PI * 2;
+        } else if (type === 'crusher') {
+            // Two blocks that close in and open
+            this.w = 60 * gameScale; this.h = 0; // dynamic
+            this.gapS = (140 + Math.random() * 80) * gameScale;
+            this.centerY = arenaY + arenaHeight * 0.35 + Math.random() * arenaHeight * 0.3;
+            this.phase = 0; this.crushSpd = 1.5 + Math.random();
+            this.crushAmp = (arenaHeight * 0.25) * gameScale;
+        } else if (type === 'laser') {
+            // Horizontal laser beam with gap window that opens/closes
+            this.w = arenaWidth; this.h = 8 * gameScale;
+            this.y = arenaY + 80 * gameScale + Math.random() * (arenaHeight - 160 * gameScale);
+            this.isOpen = false; this.openTimer = 0;
+            this.openDuration = 50 + Math.random() * 30; // frames open
+            this.closedDuration = 60 + Math.random() * 40; // frames closed
+            this.cycleTimer = Math.random() * this.closedDuration; // start offset
+        } else if (type === 'wrecking') {
+            // Ball on a chain that swings
+            this.chainLen = (100 + Math.random() * 100) * gameScale;
+            this.pivotX = x + 30 * gameScale;
+            this.pivotY = Math.random() > 0.5 ? arenaY : arenaY + arenaHeight;
+            this.angle = Math.random() * Math.PI;
+            this.angleVel = (Math.random() > 0.5 ? 1 : -1) * (0.02 + Math.random() * 0.03);
+            this.ballR = 28 * gameScale;
+            this.w = this.ballR * 2; this.h = this.ballR * 2;
+            this.y = this.pivotY; // for removal check uses x only
         }
     }
-    update(s) { this.x -= s; }
+    update(s) {
+        this.x -= s;
+        if (this.type === 'moving') {
+            this.phase += 0.04; this.y = this.baseY + Math.sin(this.phase) * this.moveAmp;
+        } else if (this.type === 'crusher') {
+            this.phase += 0.035 * this.crushSpd;
+            const open = Math.abs(Math.sin(this.phase));
+            this.gapHalf = this.gapS / 2 + this.crushAmp * (1 - open);
+        } else if (this.type === 'laser') {
+            this.cycleTimer++;
+            if (this.isOpen) {
+                if (this.cycleTimer >= this.openDuration) { this.isOpen = false; this.cycleTimer = 0; }
+            } else {
+                if (this.cycleTimer >= this.closedDuration) { this.isOpen = true; this.cycleTimer = 0; }
+            }
+        } else if (this.type === 'wrecking') {
+            this.angleVel += Math.sin(this.angle) * -0.001; // pendulum
+            this.angle += this.angleVel;
+        }
+    }
+    getBallPos() {
+        return { x: this.pivotX - (trialSpeed * 0.5), y: this.pivotY + Math.cos(this.angle) * this.chainLen * (this.pivotY === arenaY ? 1 : -1), r: this.ballR };
+    }
     draw() {
         const alpha = Math.min(1, (canvas.width + 200 - this.x) / 400);
         ctx.globalAlpha = alpha * 0.9;
         if (this.type === 'ring') {
-            // Top bar
-            const topH = this.gapY - arenaY;
-            const botH = (arenaY + arenaHeight) - (this.gapY + this.gapS);
-            // Solid fill
-            ctx.fillStyle = '#1a1a2e';
-            ctx.fillRect(this.x, arenaY, this.w, topH);
-            ctx.fillRect(this.x, this.gapY + this.gapS, this.w, botH);
-            // Neon edge glow
-            ctx.strokeStyle = '#4fc3f7'; ctx.lineWidth = 3 * gameScale;
-            ctx.shadowBlur = 12 * gameScale; ctx.shadowColor = '#4fc3f7';
-            ctx.strokeRect(this.x, arenaY, this.w, topH);
-            ctx.strokeRect(this.x, this.gapY + this.gapS, this.w, botH);
-            // Gap indicator lines (green)
+            const topH = this.gapY - arenaY, botH = (arenaY + arenaHeight) - (this.gapY + this.gapS);
+            ctx.fillStyle = '#1a1a2e'; ctx.fillRect(this.x, arenaY, this.w, topH); ctx.fillRect(this.x, this.gapY + this.gapS, this.w, botH);
+            ctx.strokeStyle = '#4fc3f7'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 12 * gameScale; ctx.shadowColor = '#4fc3f7';
+            ctx.strokeRect(this.x, arenaY, this.w, topH); ctx.strokeRect(this.x, this.gapY + this.gapS, this.w, botH);
             ctx.strokeStyle = '#00e676'; ctx.lineWidth = 2 * gameScale; ctx.shadowColor = '#00e676';
             ctx.beginPath(); ctx.moveTo(this.x, this.gapY); ctx.lineTo(this.x + this.w, this.gapY); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(this.x, this.gapY + this.gapS); ctx.lineTo(this.x + this.w, this.gapY + this.gapS); ctx.stroke();
             ctx.shadowBlur = 0;
         } else if (this.type === 'spike') {
+            ctx.fillStyle = '#2d1b1b'; ctx.fillRect(this.x, this.y, this.w, this.h);
+            ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 12 * gameScale; ctx.shadowColor = '#ff5252';
+            ctx.strokeRect(this.x, this.y, this.w, this.h); ctx.shadowBlur = 0;
+        } else if (this.type === 'block') {
+            ctx.fillStyle = '#1a2d1b'; ctx.fillRect(this.x, this.y, this.w, this.h);
+            ctx.strokeStyle = '#69f0ae'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 12 * gameScale; ctx.shadowColor = '#69f0ae';
+            ctx.strokeRect(this.x, this.y, this.w, this.h); ctx.shadowBlur = 0;
+        } else if (this.type === 'moving') {
+            ctx.fillStyle = '#2d1a2e'; ctx.fillRect(this.x, this.y, this.w, this.h);
+            ctx.strokeStyle = '#ce93d8'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 12 * gameScale; ctx.shadowColor = '#ce93d8';
+            ctx.strokeRect(this.x, this.y, this.w, this.h);
+            // Arrow indicating movement
+            ctx.fillStyle = '#ce93d8'; ctx.font = `${14 * gameScale}px Arial`;
+            ctx.fillText('↕', this.x + this.w / 2 - 7 * gameScale, this.y + this.h / 2 + 5 * gameScale);
+            ctx.shadowBlur = 0;
+        } else if (this.type === 'crusher') {
+            const gh = this.gapHalf || this.gapS / 2;
+            const topH = this.centerY - gh - arenaY;
+            const botY = this.centerY + gh, botH = arenaY + arenaHeight - botY;
             ctx.fillStyle = '#2d1b1b';
-            ctx.fillRect(this.x, this.y, this.w, this.h);
-            ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 3 * gameScale;
-            ctx.shadowBlur = 12 * gameScale; ctx.shadowColor = '#ff5252';
-            ctx.strokeRect(this.x, this.y, this.w, this.h);
+            if (topH > 0) ctx.fillRect(this.x, arenaY, this.w, topH);
+            if (botH > 0) ctx.fillRect(this.x, botY, this.w, botH);
+            ctx.strokeStyle = '#ff6f00'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 14 * gameScale; ctx.shadowColor = '#ff6f00';
+            if (topH > 0) ctx.strokeRect(this.x, arenaY, this.w, topH);
+            if (botH > 0) ctx.strokeRect(this.x, botY, this.w, botH);
             ctx.shadowBlur = 0;
-        } else {
-            // floating block
-            ctx.fillStyle = '#1a2d1b';
-            ctx.fillRect(this.x, this.y, this.w, this.h);
-            ctx.strokeStyle = '#69f0ae'; ctx.lineWidth = 3 * gameScale;
-            ctx.shadowBlur = 12 * gameScale; ctx.shadowColor = '#69f0ae';
-            ctx.strokeRect(this.x, this.y, this.w, this.h);
-            ctx.shadowBlur = 0;
+        } else if (this.type === 'laser') {
+            if (!this.isOpen) {
+                const pct = this.cycleTimer / this.closedDuration;
+                const beamAlpha = 0.5 + Math.sin(Date.now() / 80) * 0.4;
+                ctx.globalAlpha = alpha * beamAlpha;
+                ctx.fillStyle = '#ff1744';
+                ctx.fillRect(arenaX, this.y - this.h / 2, arenaWidth, this.h);
+                ctx.shadowBlur = 20 * gameScale; ctx.shadowColor = '#ff1744';
+                ctx.strokeStyle = '#ff8a80'; ctx.lineWidth = 2 * gameScale;
+                ctx.strokeRect(arenaX, this.y - this.h / 2, arenaWidth, this.h);
+                ctx.shadowBlur = 0;
+            } else {
+                // Show outline / warning
+                ctx.globalAlpha = alpha * 0.15;
+                ctx.fillStyle = '#ff1744';
+                ctx.fillRect(arenaX, this.y - this.h / 2, arenaWidth, this.h);
+            }
+        } else if (this.type === 'wrecking') {
+            const bp = this.getBallPos();
+            ctx.strokeStyle = '#888'; ctx.lineWidth = 2 * gameScale;
+            ctx.beginPath(); ctx.moveTo(this.pivotX - (trialSpeed * 0.5), this.pivotY); ctx.lineTo(bp.x, bp.y); ctx.stroke();
+            ctx.beginPath(); ctx.arc(bp.x, bp.y, bp.r, 0, Math.PI * 2);
+            ctx.fillStyle = '#37474f'; ctx.fill();
+            ctx.strokeStyle = '#b0bec5'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = '#b0bec5'; ctx.stroke(); ctx.shadowBlur = 0;
         }
         ctx.globalAlpha = 1;
     }
     checkCollision(p) {
         if (this.type === 'ring') {
-            // Check if player overlaps the ring bars
             if (p.pos.x + p.radius > this.x && p.pos.x - p.radius < this.x + this.w) {
                 const inGap = p.pos.y - p.radius > this.gapY && p.pos.y + p.radius < this.gapY + this.gapS;
                 if (!inGap) {
-                    // Check engine arc hit (back of player touches the bar)
                     const backX = p.pos.x + Math.cos(p.currentAngle + Math.PI) * p.radius;
                     const backY = p.pos.y + Math.sin(p.currentAngle + Math.PI) * p.radius;
                     const topBar = backY > arenaY && backY < this.gapY;
@@ -384,14 +538,36 @@ class TrialObstacle {
                     return 'hit';
                 }
             }
-        } else {
+        } else if (this.type === 'spike' || this.type === 'block' || this.type === 'moving') {
             const obs = { x: this.x, y: this.y, w: this.w, h: this.h };
             if (p.pos.x + p.radius > obs.x && p.pos.x - p.radius < obs.x + obs.w &&
                 p.pos.y + p.radius > obs.y && p.pos.y - p.radius < obs.y + obs.h) {
-                // Engine arc reset check
                 const backX = p.pos.x + Math.cos(p.currentAngle + Math.PI) * p.radius;
                 const backY = p.pos.y + Math.sin(p.currentAngle + Math.PI) * p.radius;
                 if (backX > obs.x && backX < obs.x + obs.w && backY > obs.y && backY < obs.y + obs.h) return 'reset';
+                return 'hit';
+            }
+        } else if (this.type === 'crusher') {
+            const gh = this.gapHalf || this.gapS / 2;
+            const topH = this.centerY - gh - arenaY;
+            const botY = this.centerY + gh;
+            // Top block
+            if (topH > 0 && p.pos.x + p.radius > this.x && p.pos.x - p.radius < this.x + this.w &&
+                p.pos.y - p.radius < arenaY + topH && p.pos.y + p.radius > arenaY) return 'hit';
+            // Bottom block
+            if (p.pos.x + p.radius > this.x && p.pos.x - p.radius < this.x + this.w &&
+                p.pos.y + p.radius > botY && p.pos.y - p.radius < arenaY + arenaHeight) return 'hit';
+        } else if (this.type === 'laser') {
+            if (!this.isOpen) {
+                if (p.pos.y + p.radius > this.y - this.h && p.pos.y - p.radius < this.y + this.h) return 'hit';
+            }
+        } else if (this.type === 'wrecking') {
+            const bp = this.getBallPos();
+            const d = Math.hypot(p.pos.x - bp.x, p.pos.y - bp.y);
+            if (d < p.radius + bp.r) {
+                const backX = p.pos.x + Math.cos(p.currentAngle + Math.PI) * p.radius;
+                const backY = p.pos.y + Math.sin(p.currentAngle + Math.PI) * p.radius;
+                if (Math.hypot(backX - bp.x, backY - bp.y) < bp.r) return 'reset';
                 return 'hit';
             }
         }
@@ -428,11 +604,14 @@ function init() {
 
 function resetPositions() {
     const groundY = arenaY + arenaHeight - playerRadius;
-    player1 = new Player(arenaX + 150 * gameScale, groundY, config.colors.blue, { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'KeyT', boost: 'KeyR' });
-    player2 = new Player(arenaX + arenaWidth - 150 * gameScale, groundY, config.colors.orange, { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', jump: 'Period', boost: 'Comma' });
+    player1 = new Player(arenaX + 150 * gameScale, groundY, config.colors.blue,
+        { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost });
+    player2 = new Player(arenaX + arenaWidth - 150 * gameScale, groundY, config.colors.orange,
+        { up: keybinds.p2up, down: keybinds.p2down, left: keybinds.p2left, right: keybinds.p2right, jump: keybinds.p2jump, boost: keybinds.p2boost });
     // Restore WASD+arrows for multiplayer client P2
     if (currentRoom && !isHost) {
-        player2.controls = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'KeyT', boost: 'KeyR', up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
+        player2.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost,
+            up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
     }
     ball = new Ball(arenaX + arenaWidth / 2, arenaY + arenaHeight * 2 / 3);
     const midY = arenaY + arenaHeight / 2, gh = config.goalHeight * gameScale / 2;
@@ -450,31 +629,53 @@ function checkWallCollision(e) {
         if (e.pos.x > arenaX + arenaWidth - e.radius) { e.pos.x = arenaX + arenaWidth - e.radius; e.vel.x *= -0.6; e.isTouchingWall = true; }
         return;
     }
-    const lx = arenaX, rx = arenaX + arenaWidth, ty = arenaY, by = arenaY + arenaHeight, r = e.radius;
-    const gH = config.goalHeight * gameScale, gT = ty + arenaHeight / 2 - gH / 2, gB = ty + arenaHeight / 2 + gH / 2;
+    // Wall thickness matches visual line (10 * gameScale, so half = 5 * gameScale inset)
+    const wallT = 5 * gameScale;
+    const lx = arenaX + wallT, rx = arenaX + arenaWidth - wallT;
+    const ty = arenaY + wallT, by = arenaY + arenaHeight - wallT;
+    const r = e.radius;
+    const gH = config.goalHeight * gameScale, gT = (arenaY + arenaHeight/2) - gH/2, gB = (arenaY + arenaHeight/2) + gH/2;
+    const gw = config.goalWidth * gameScale;
     const res = 0.88;
-    if (e.pos.y > by - r) { e.pos.y = by - r; e.vel.y *= -res; if (e instanceof Player) { e.isTouchingWall = true; } }
-    if (e.pos.y < ty + r) { e.pos.y = ty + r; e.vel.y *= -res; if (e instanceof Player) e.isTouchingWall = true; }
-    if (e.pos.x < lx || e.pos.x > rx) {
-        if (e.pos.y > gT && e.pos.y < gB) {
-            const gw = config.goalWidth * gameScale;
-            if (e.pos.x - r < lx - gw) { e.pos.x = lx - gw + r; e.vel.x *= -res; }
-            if (e.pos.x + r > rx + gw) { e.pos.x = rx + gw - r; e.vel.x *= -res; }
+
+    // Top / bottom walls
+    if (e.pos.y - r < ty) { e.pos.y = ty + r; e.vel.y = Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+    if (e.pos.y + r > by) { e.pos.y = by - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+
+    // Left wall — allow passage through goal opening
+    if (e.pos.x - r < lx) {
+        const inGoal = e.pos.y > gT && e.pos.y < gB;
+        if (!inGoal) {
+            e.pos.x = lx + r; e.vel.x = Math.abs(e.vel.x) * res;
+            if (e instanceof Player) e.isTouchingWall = true;
         } else {
-            if (e.pos.x < lx) { e.pos.x = lx + r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
-            if (e.pos.x > rx) { e.pos.x = rx - r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
+            // Inside goal on left side: cap at goal back wall
+            if (e.pos.x - r < arenaX - gw + wallT) { e.pos.x = arenaX - gw + wallT + r; e.vel.x = Math.abs(e.vel.x) * res; }
+            // Goal top/bottom inner walls (goalpost posts)
+            if (e.pos.y - r < gT && e.pos.x < lx + r * 2) { e.pos.y = gT + r; e.vel.y = Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+            if (e.pos.y + r > gB && e.pos.x < lx + r * 2) { e.pos.y = gB - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
         }
-    } else {
-        if (e.pos.x - r < lx && !(e.pos.y > gT && e.pos.y < gB)) { e.pos.x = lx + r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
-        if (e.pos.x + r > rx && !(e.pos.y > gT && e.pos.y < gB)) { e.pos.x = rx - r; e.vel.x *= -res; if (e instanceof Player) e.isTouchingWall = true; }
     }
+    // Right wall
+    if (e.pos.x + r > rx) {
+        const inGoal = e.pos.y > gT && e.pos.y < gB;
+        if (!inGoal) {
+            e.pos.x = rx - r; e.vel.x = -Math.abs(e.vel.x) * res;
+            if (e instanceof Player) e.isTouchingWall = true;
+        } else {
+            if (e.pos.x + r > arenaX + arenaWidth + gw - wallT) { e.pos.x = arenaX + arenaWidth + gw - wallT - r; e.vel.x = -Math.abs(e.vel.x) * res; }
+            if (e.pos.y - r < gT && e.pos.x > rx - r * 2) { e.pos.y = gT + r; e.vel.y = Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+            if (e.pos.y + r > gB && e.pos.x > rx - r * 2) { e.pos.y = gB - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+        }
+    }
+
     // Corner rounding
     const cr = config.cornerRadius * gameScale;
     [{ x: lx + cr, y: ty + cr }, { x: rx - cr, y: ty + cr }, { x: lx + cr, y: by - cr }, { x: rx - cr, y: by - cr }].forEach(c => {
         const isCorner = (c.x === lx + cr && e.pos.x < c.x && (c.y === ty + cr ? e.pos.y < c.y : e.pos.y > c.y)) || (c.x === rx - cr && e.pos.x > c.x && (c.y === ty + cr ? e.pos.y < c.y : e.pos.y > c.y));
         if (!isCorner) return;
         const d = e.pos.dist(c);
-        if (d > cr - r && d > 0) { const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d; e.pos.x = c.x + nx * (cr - r); e.pos.y = c.y + ny * (cr - r); const dot = e.vel.x * nx + e.vel.y * ny; if (dot > 0) { e.vel.x -= (1 + res) * dot * nx; e.vel.y -= (1 + res) * dot * ny; } if (e instanceof Player) e.isTouchingWall = true; }
+        if (d < cr - r && d > 0) { const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d; e.pos.x = c.x + nx * (cr - r); e.pos.y = c.y + ny * (cr - r); const dot = e.vel.x * nx + e.vel.y * ny; if (dot < 0) { e.vel.x -= (1 + res) * dot * nx; e.vel.y -= (1 + res) * dot * ny; } if (e instanceof Player) e.isTouchingWall = true; }
     });
     posts.forEach(p => { const dx = Math.abs(e.pos.x - p.x), dy = Math.abs(e.pos.y - p.y); if (dx < r && dy < r) { if (dx > dy) { e.pos.x = p.x + (e.pos.x > p.x ? r : -r); e.vel.x *= -res; } else { e.pos.y = p.y + (e.pos.y > p.y ? r : -r); e.vel.y *= -res; } if (e instanceof Player) e.isTouchingWall = true; } });
     // Goal scoring — host only
@@ -494,10 +695,24 @@ function resolveCollision(a, b) {
             while (backAngle < -Math.PI) backAngle += Math.PI * 2; while (backAngle > Math.PI) backAngle -= Math.PI * 2;
             if (Math.abs(angleToBall - backAngle) < 0.65) { if (a.boost < 112 || !a.hasJump) { a.boost = 112; a.hasJump = true; a.pulse = 20; } }
         }
+        // Player-to-player back touch: give jump (not boost)
+        if (a instanceof Player && b instanceof Player) {
+            const angleAtoB = Math.atan2(b.pos.y - a.pos.y, b.pos.x - a.pos.x);
+            let aBack = a.currentAngle + Math.PI;
+            while (aBack < -Math.PI) aBack += Math.PI * 2; while (aBack > Math.PI) aBack -= Math.PI * 2;
+            if (Math.abs(angleAtoB - aBack) < 0.65 && !a.hasJump) { a.hasJump = true; a.pulse = 15; }
+            let bBack = b.currentAngle + Math.PI;
+            while (bBack < -Math.PI) bBack += Math.PI * 2; while (bBack > Math.PI) bBack -= Math.PI * 2;
+            const angleBtoA = Math.atan2(a.pos.y - b.pos.y, a.pos.x - b.pos.x);
+            if (Math.abs(angleBtoA - bBack) < 0.65 && !b.hasJump) { b.hasJump = true; b.pulse = 15; }
+        }
         const nx = (b.pos.x - a.pos.x) / d, ny = (b.pos.y - a.pos.y) / d;
         const overlap = minDist - d, totalMass = a.mass + b.mass;
-        a.pos.x -= nx * overlap * (b.mass / totalMass); a.pos.y -= ny * overlap * (b.mass / totalMass);
-        b.pos.x += nx * overlap * (a.mass / totalMass); b.pos.y += ny * overlap * (a.mass / totalMass);
+        // Separate fully to prevent overlap/glitch
+        a.pos.x -= nx * overlap * (b.mass / totalMass);
+        a.pos.y -= ny * overlap * (b.mass / totalMass);
+        b.pos.x += nx * overlap * (a.mass / totalMass);
+        b.pos.y += ny * overlap * (a.mass / totalMass);
         const rvx = b.vel.x - a.vel.x, rvy = b.vel.y - a.vel.y, dot = rvx * nx + rvy * ny;
         if (dot < 0) { const imp = (2 * dot) / totalMass; a.vel.x += imp * b.mass * nx * 1.15; a.vel.y += imp * b.mass * ny * 1.15; b.vel.x -= imp * a.mass * nx * 1.15; b.vel.y -= imp * a.mass * ny * 1.15; }
     }
@@ -577,24 +792,39 @@ socket.on('userJoined', () => {
 
 socket.on('gameStateUpdate', (state) => {
     if (isHost) return;
+    const LERP_BALL = 0.18, SNAP_BALL = 80;
+    const LERP_P1 = 0.25, SNAP_P1 = 100;
+    const LERP_P2 = 0.1, SNAP_P2 = 120;
+
     if (ball) {
         const tbx = state.ball.x * arenaWidth + arenaX, tby = state.ball.y * arenaHeight + arenaY;
-        // Ball: always sync velocity for dead reckoning. Hard snap only on big divergence.
-        if (Math.hypot(tbx - ball.pos.x, tby - ball.pos.y) > 60) { ball.pos.x = tbx; ball.pos.y = tby; }
-        ball.vel.x = state.ball.vx * gameScale; ball.vel.y = state.ball.vy * gameScale;
+        const bd = Math.hypot(tbx - ball.pos.x, tby - ball.pos.y);
+        if (bd > SNAP_BALL) { ball.pos.x = tbx; ball.pos.y = tby; }
+        else { ball.pos.x += (tbx - ball.pos.x) * LERP_BALL; ball.pos.y += (tby - ball.pos.y) * LERP_BALL; }
+        ball.vel.x = ball.vel.x * 0.7 + (state.ball.vx * gameScale) * 0.3;
+        ball.vel.y = ball.vel.y * 0.7 + (state.ball.vy * gameScale) * 0.3;
     }
-    // P1: opponent — fully authoritative from host. Never simulate locally.
+    // P1: opponent — authoritative from host
     if (player1) {
-        player1.pos.x = state.p1.x * arenaWidth + arenaX; player1.pos.y = state.p1.y * arenaHeight + arenaY;
+        const tp1x = state.p1.x * arenaWidth + arenaX, tp1y = state.p1.y * arenaHeight + arenaY;
+        const p1d = Math.hypot(tp1x - player1.pos.x, tp1y - player1.pos.y);
+        if (p1d > SNAP_P1) { player1.pos.x = tp1x; player1.pos.y = tp1y; }
+        else { player1.pos.x += (tp1x - player1.pos.x) * LERP_P1; player1.pos.y += (tp1y - player1.pos.y) * LERP_P1; }
         player1.vel.x = state.p1.vx * gameScale; player1.vel.y = state.p1.vy * gameScale;
         player1.currentAngle = state.p1.angle; player1.boost = state.p1.boost; player1.hasJump = state.p1.hasJump;
         if (state.p1.isBoosting) player1.createBoostFlame();
     }
-    // P2: local player — trust local physics, only snap on large divergence, don't micro-lerp.
+    // P2: local player — gentle correction only, never hard-snap on small divergence
     if (player2) {
         const tp2x = state.p2.x * arenaWidth + arenaX, tp2y = state.p2.y * arenaHeight + arenaY;
         const d2 = Math.hypot(tp2x - player2.pos.x, tp2y - player2.pos.y);
-        if (d2 > 40) { player2.pos.x = tp2x; player2.pos.y = tp2y; player2.vel.x = state.p2.vx * gameScale; player2.vel.y = state.p2.vy * gameScale; }
+        if (d2 > SNAP_P2) {
+            player2.pos.x = tp2x; player2.pos.y = tp2y;
+            player2.vel.x = state.p2.vx * gameScale; player2.vel.y = state.p2.vy * gameScale;
+        } else if (d2 > 15) {
+            player2.pos.x += (tp2x - player2.pos.x) * LERP_P2;
+            player2.pos.y += (tp2y - player2.pos.y) * LERP_P2;
+        }
         player2.hasJump = state.p2.hasJump;
     }
     scoreBlue = state.scoreB; scoreOrange = state.scoreO;
@@ -671,7 +901,8 @@ function setupAsClient() {
     document.getElementById('p2-join').style.display = 'none';
     document.getElementById('p1-controls').style.display = 'none';
     document.getElementById('p2-controls').style.display = 'block';
-    if (player2) player2.controls = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'KeyT', boost: 'KeyR', up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
+    if (player2) player2.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost,
+        up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
 }
 
 document.getElementById('create-room-btn').onclick = () => {
@@ -737,11 +968,12 @@ function setupSlider(id, key, fmt) {
 }
 setupSlider('slider-sens', 'rotationSensitivity'); setupSlider('slider-boost', 'boostPower');
 setupSlider('slider-weight', 'gravity'); setupSlider('slider-friction', 'friction');
-document.getElementById('color-blue').addEventListener('input', e => { config.colors.blue = e.target.value; if (player1) player1.color = e.target.value; });
-document.getElementById('color-orange').addEventListener('input', e => { config.colors.orange = e.target.value; if (player2) player2.color = e.target.value; });
 document.getElementById('settings-toggle').onclick = () => { const p = document.getElementById('settings-panel'); const opening = p.style.display !== 'block'; document.getElementById('leaderboard-panel').style.display = 'none'; document.getElementById('multiplayer-panel').style.display = 'none'; p.style.display = opening ? 'block' : 'none'; };
 document.getElementById('how-to-play-btn').onclick = () => { document.getElementById('how-to-play-overlay').style.display = 'flex'; document.getElementById('settings-panel').style.display = 'none'; };
 document.getElementById('close-how-to').onclick = () => document.getElementById('how-to-play-overlay').style.display = 'none';
+document.getElementById('keybind-btn').onclick = () => { buildKeybindUI(); document.getElementById('keybind-overlay').style.display = 'flex'; document.getElementById('settings-panel').style.display = 'none'; };
+document.getElementById('close-keybind').onclick = () => { rebindTarget = null; document.getElementById('keybind-overlay').style.display = 'none'; };
+document.getElementById('reset-keybinds-btn').onclick = () => { keybinds = {...DEFAULT_KEYBINDS}; saveKeybinds(); buildKeybindUI(); };
 
 // ─── Leaderboard UI ───────────────────────────────────────────────────────────
 document.getElementById('leaderboard-toggle').onclick = () => { const p = document.getElementById('leaderboard-panel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; if (p.style.display === 'block') { document.getElementById('settings-panel').style.display = 'none'; document.getElementById('multiplayer-panel').style.display = 'none'; fetchLeaderboard(); } };
@@ -771,12 +1003,19 @@ function update(dt = 1) {
         trialsJumpIcon.style.opacity = player1.hasJump ? '1' : '0.2';
         trialsJumpIcon.innerText = player1.hasJump ? '⚡' : '○';
         const speedPct = Math.min(100, ((trialSpeed - TRIAL_BASE_SPEED) / (TRIAL_MAX_SPEED - TRIAL_BASE_SPEED)) * 100);
+        const speedRatio = speedPct / 100;
         trialsSpeedFill.style.width = (10 + speedPct * 0.9) + '%';
         // Spawn obstacles
         if (trialDistance > nextObsDist) {
-            const types = ['ring', 'ring', 'spike', 'block'];
-            trialObstacles.push(new TrialObstacle(arenaX + arenaWidth + 80, types[Math.floor(Math.random() * types.length)]));
-            nextObsDist = trialDistance + (300 + Math.random() * 400) * (1 - speedPct / 200);
+            // Weight obstacle types by distance/speed
+            const dist = Math.floor(trialDistance / 100);
+            let types;
+            if (dist < 50)       types = ['ring','ring','spike','block'];
+            else if (dist < 150) types = ['ring','spike','block','moving','crusher'];
+            else                 types = ['ring','spike','block','moving','crusher','laser','wrecking'];
+            const chosenType = types[Math.floor(Math.random() * types.length)];
+            trialObstacles.push(new TrialObstacle(arenaX + arenaWidth + 80, chosenType));
+            nextObsDist = trialDistance + (280 + Math.random() * 380) * (1 - speedRatio / 1.8);
         }
         player1.boost = 112; // infinite boost
         player1.handleInput(ts); player1.update(ts); checkWallCollision(player1);
@@ -903,6 +1142,7 @@ function loop(timestamp) {
 }
 window.onresize = init;
 init();
+applyKeybindsToPlayers();
 fetchLeaderboard();
 requestAnimationFrame(loop);
 </script>
