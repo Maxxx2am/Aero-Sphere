@@ -307,7 +307,7 @@ class Player extends Entity {
         this.controls = controls;
         this.currentAngle = color === config.colors.blue ? 0 : Math.PI;
         this.targetAngle = this.currentAngle;
-        this.boost = 112; this.jumps = 1; this.pulse = 0;
+        this.boost = 112; this.jumps = 1; this.hasJump = true; this.pulse = 0;
         this.jumping = false; this.jumpCooldown = 0; this.isRecharging = false;
     }
     handleInput(ts) {
@@ -337,10 +337,10 @@ class Player extends Entity {
             this.createBoostFlame();
         } else if (this.isTouchingWall) { this.isRecharging = true; }
         if (this.isRecharging) this.boost = Math.min(112, this.boost + 1.35 * ts);
-        if (this.isTouchingWall) { this.jumps = gameState === 'trials' ? 3 : 1; }
-        if (jumpKey && !this.jumping && this.jumps > 0 && this.jumpCooldown <= 0) {
+        if (this.isTouchingWall) { this.jumps = gameState === 'trials' ? 3 : 1; this.hasJump = true; }
+        if (jumpKey && !this.jumping && (this.jumps > 0 || this.hasJump) && this.jumpCooldown <= 0) {
             this.applyForce(new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(5.5 * gameScale));
-            this.jumping = true; this.jumps--; this.jumpCooldown = 30;
+            this.jumping = true; this.jumps--; this.hasJump = false; this.jumpCooldown = 30;
             effects.push(new JumpAura(this.pos.x, this.pos.y));
         }
         if (!jumpKey) this.jumping = false;
@@ -725,18 +725,18 @@ function resolveCollision(a, b) {
             const angleToBall = Math.atan2(b.pos.y - a.pos.y, b.pos.x - a.pos.x);
             let backAngle = a.currentAngle + Math.PI;
             while (backAngle < -Math.PI) backAngle += Math.PI * 2; while (backAngle > Math.PI) backAngle -= Math.PI * 2;
-            if (Math.abs(angleToBall - backAngle) < 0.65) { if (a.boost < 112 || !a.hasJump) { a.boost = 112; a.hasJump = true; a.pulse = 20; } }
+            if (Math.abs(angleToBall - backAngle) < 0.65) { if (a.boost < 112 || a.jumps === 0) { a.boost = 112; a.jumps = gameState === 'trials' ? 3 : 1; a.pulse = 20; } }
         }
         // Player-to-player back touch: give jump (not boost)
         if (a instanceof Player && b instanceof Player) {
             const angleAtoB = Math.atan2(b.pos.y - a.pos.y, b.pos.x - a.pos.x);
             let aBack = a.currentAngle + Math.PI;
             while (aBack < -Math.PI) aBack += Math.PI * 2; while (aBack > Math.PI) aBack -= Math.PI * 2;
-            if (Math.abs(angleAtoB - aBack) < 0.65 && !a.hasJump) { a.hasJump = true; a.pulse = 15; }
+            if (Math.abs(angleAtoB - aBack) < 0.65 && a.jumps === 0) { a.jumps = gameState === 'trials' ? 3 : 1; a.pulse = 15; }
             let bBack = b.currentAngle + Math.PI;
             while (bBack < -Math.PI) bBack += Math.PI * 2; while (bBack > Math.PI) bBack -= Math.PI * 2;
             const angleBtoA = Math.atan2(a.pos.y - b.pos.y, a.pos.x - b.pos.x);
-            if (Math.abs(angleBtoA - bBack) < 0.65 && !b.hasJump) { b.hasJump = true; b.pulse = 15; }
+            if (Math.abs(angleBtoA - bBack) < 0.65 && b.jumps === 0) { b.jumps = gameState === 'trials' ? 3 : 1; b.pulse = 15; }
         }
         const nx = (b.pos.x - a.pos.x) / d, ny = (b.pos.y - a.pos.y) / d;
         const overlap = minDist - d, totalMass = a.mass + b.mass;
@@ -925,8 +925,8 @@ function syncMultiplayer() {
     if (!isHost || !player1 || !player2 || !ball) return;
     const state = {
         ball: { x: (ball.pos.x - arenaX) / arenaWidth, y: (ball.pos.y - arenaY) / arenaHeight, vx: ball.vel.x / gameScale, vy: ball.vel.y / gameScale },
-        p1: { x: (player1.pos.x - arenaX) / arenaWidth, y: (player1.pos.y - arenaY) / arenaHeight, vx: player1.vel.x / gameScale, vy: player1.vel.y / gameScale, angle: player1.currentAngle, boost: player1.boost, hasJump: player1.hasJump, isBoosting: (localKeys[keybinds.p1boost] && player1.boost > 0) },
-        p2: { x: (player2.pos.x - arenaX) / arenaWidth, y: (player2.pos.y - arenaY) / arenaHeight, vx: player2.vel.x / gameScale, vy: player2.vel.y / gameScale, angle: player2.currentAngle, boost: player2.boost, hasJump: player2.hasJump },
+        p1: { x: (player1.pos.x - arenaX) / arenaWidth, y: (player1.pos.y - arenaY) / arenaHeight, vx: player1.vel.x / gameScale, vy: player1.vel.y / gameScale, angle: player1.currentAngle, boost: player1.boost, hasJump: player1.hasJump, jumps: player1.jumps, isBoosting: (localKeys[keybinds.p1boost] && player1.boost > 0) },
+        p2: { x: (player2.pos.x - arenaX) / arenaWidth, y: (player2.pos.y - arenaY) / arenaHeight, vx: player2.vel.x / gameScale, vy: player2.vel.y / gameScale, angle: player2.currentAngle, boost: player2.boost, hasJump: player2.hasJump, jumps: player2.jumps },
         scoreB: scoreBlue, scoreO: scoreOrange, ts: timeScale, cd: countdown, rd: resetDelay,
         showGo: (countdown <= 0 && goTimer > 0),
         physics: { gravity: config.gravity, friction: config.friction, boostPower: config.boostPower, rotationSensitivity: config.rotationSensitivity }
@@ -1224,12 +1224,12 @@ function draw() {
         if (p1Joined) {
             ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(40*gameScale, canvas.height - 220*gameScale, gW, ghBar);
             ctx.fillStyle = config.colors.blue; ctx.fillRect(40*gameScale, canvas.height - 40*gameScale - player1.boost * 1.6 * gameScale, gW, player1.boost * 1.6 * gameScale);
-            if (player1.hasJump) { ctx.beginPath(); ctx.arc(46*gameScale, canvas.height-235*gameScale, 4*gameScale, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.shadowBlur = 10*gameScale; ctx.shadowColor = config.colors.blue; ctx.fill(); ctx.shadowBlur = 0; }
+            if (player1.jumps > 0) { ctx.beginPath(); ctx.arc(46*gameScale, canvas.height-235*gameScale, 4*gameScale, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.shadowBlur = 10*gameScale; ctx.shadowColor = config.colors.blue; ctx.fill(); ctx.shadowBlur = 0; }
         }
         if (p2Joined) {
             ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(canvas.width - 52*gameScale, canvas.height - 220*gameScale, gW, ghBar);
             ctx.fillStyle = config.colors.orange; ctx.fillRect(canvas.width - 52*gameScale, canvas.height - 40*gameScale - player2.boost * 1.6 * gameScale, gW, player2.boost * 1.6 * gameScale);
-            if (player2.hasJump) { ctx.beginPath(); ctx.arc(canvas.width - 46*gameScale, canvas.height-235*gameScale, 4*gameScale, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.shadowBlur = 10*gameScale; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0; }
+            if (player2.jumps > 0) { ctx.beginPath(); ctx.arc(canvas.width - 46*gameScale, canvas.height-235*gameScale, 4*gameScale, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.shadowBlur = 10*gameScale; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0; }
         }
     }
     ctx.restore();
