@@ -679,8 +679,9 @@ function checkWallCollision(e) {
         }
     }
 
-    // Corner rounding — the corners are concave arcs. The solid region is OUTSIDE the arc (distance > cr from corner center).
-    // Push entity inward (toward arena center) when it strays into the cut-off corner.
+    // Corner rounding — concave arc corners. Corner center is at distance `cr` from each adjacent wall.
+    // The arc wall surface sits at distance `cr` from the corner centre.
+    // Entity (radius r) must not get closer than `cr - r` to corner centre.
     const cr = config.cornerRadius * gameScale;
     const corners = [
         { x: lx + cr, y: ty + cr },   // top-left
@@ -689,15 +690,15 @@ function checkWallCollision(e) {
         { x: rx - cr, y: by - cr }    // bottom-right
     ];
     corners.forEach(c => {
-        // Only act when entity centre is in the actual corner quadrant (past the arc)
-        const inQuadX = (c.x === lx + cr) ? e.pos.x < c.x : e.pos.x > c.x;
-        const inQuadY = (c.y === ty + cr) ? e.pos.y < c.y : e.pos.y > c.y;
+        // Only act when entity is in the corner quadrant (past both flat walls)
+        const inQuadX = (c.x === lx + cr) ? (e.pos.x < c.x) : (e.pos.x > c.x);
+        const inQuadY = (c.y === ty + cr) ? (e.pos.y < c.y) : (e.pos.y > c.y);
         if (!inQuadX || !inQuadY) return;
         const d = e.pos.dist(c);
-        // Wall surface is at distance cr from corner centre; entity must stay at least r inside it
-        if (d < cr - r && d > 0) {
-            // Push entity to the arc surface
+        // Push when inside the arc (d < cr means entity centre crossed the arc surface)
+        if (d < cr && d > 0) {
             const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d;
+            // Place entity just inside the arc surface
             e.pos.x = c.x + nx * (cr - r);
             e.pos.y = c.y + ny * (cr - r);
             const dot = e.vel.x * nx + e.vel.y * ny;
@@ -705,7 +706,31 @@ function checkWallCollision(e) {
             if (e instanceof Player) e.isTouchingWall = true;
         }
     });
-    posts.forEach(p => { const dx = Math.abs(e.pos.x - p.x), dy = Math.abs(e.pos.y - p.y); if (dx < r && dy < r) { if (dx > dy) { e.pos.x = p.x + (e.pos.x > p.x ? r : -r); e.vel.x *= -res; } else { e.pos.y = p.y + (e.pos.y > p.y ? r : -r); e.vel.y *= -res; } if (e instanceof Player) e.isTouchingWall = true; } });
+    // Goalpost square corners — solid rectangles at each post position
+    // Each post is a square of size postS x postS, positioned at the field edge
+    const postS = 10 * gameScale; // square post half-size
+    posts.forEach(p => {
+        // p.x is the field edge (lx or rx), p.y is top or bottom of goal opening
+        // Determine which side
+        const isLeft = (p.x < arenaX + arenaWidth / 2);
+        // Post rect: on left side it sits just inside-left of lx; on right side just inside-right of rx
+        const px = isLeft ? lx - postS : rx;
+        const py = p.y - postS;
+        const pw = postS * 2, ph = postS * 2;
+        // AABB circle vs rect
+        const nearX = Math.max(px, Math.min(e.pos.x, px + pw));
+        const nearY = Math.max(py, Math.min(e.pos.y, py + ph));
+        const dx = e.pos.x - nearX, dy = e.pos.y - nearY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < r && dist > 0) {
+            const nx = dx / dist, ny = dy / dist;
+            e.pos.x = nearX + nx * r;
+            e.pos.y = nearY + ny * r;
+            const dot = e.vel.x * nx + e.vel.y * ny;
+            if (dot < 0) { e.vel.x -= (1 + res) * dot * nx; e.vel.y -= (1 + res) * dot * ny; }
+            if (e instanceof Player) e.isTouchingWall = true;
+        }
+    });
     // Goal scoring — host only
     if (e instanceof Ball && resetDelay <= 0 && countdown <= 0 && (isHost || !currentRoom)) {
         if (e.pos.x + r < lx && e.pos.y > gT && e.pos.y < gB) scoreGoal('orange');
@@ -1186,8 +1211,15 @@ function draw() {
         ctx.fillStyle = hexToRgba(config.colors.blue, 0.15); ctx.fillRect(lx - gw, gT, gw, gH);
         ctx.fillStyle = hexToRgba(config.colors.orange, 0.15); ctx.fillRect(rx, gT, gw, gH);
         // Arena outline (field border + goal sides/top/bottom)
-        ctx.strokeStyle = config.colors.border; ctx.lineWidth = 10 * gameScale; ctx.lineCap = 'round';
+        ctx.strokeStyle = config.colors.border; ctx.lineWidth = 10 * gameScale; ctx.lineCap = 'square';
         ctx.beginPath(); ctx.moveTo(lx+cr,ty); ctx.lineTo(rx-cr,ty); ctx.arcTo(rx,ty,rx,ty+cr,cr); ctx.lineTo(rx,gT); ctx.lineTo(rx+gw,gT); ctx.lineTo(rx+gw,gB); ctx.lineTo(rx,gB); ctx.lineTo(rx,by-cr); ctx.arcTo(rx,by,rx-cr,by,cr); ctx.lineTo(lx+cr,by); ctx.arcTo(lx,by,lx,by-cr,cr); ctx.lineTo(lx,gB); ctx.lineTo(lx-gw,gB); ctx.lineTo(lx-gw,gT); ctx.lineTo(lx,gT); ctx.lineTo(lx,ty+cr); ctx.arcTo(lx,ty,lx+cr,ty,cr); ctx.stroke();
+        // Draw solid square goalpost corners (fills the gap at the junction)
+        const postS = 5 * gameScale;
+        ctx.fillStyle = config.colors.border;
+        ctx.fillRect(lx - postS, gT - postS, postS * 2, postS * 2); // left top post
+        ctx.fillRect(lx - postS, gB - postS, postS * 2, postS * 2); // left bottom post
+        ctx.fillRect(rx - postS, gT - postS, postS * 2, postS * 2); // right top post
+        ctx.fillRect(rx - postS, gB - postS, postS * 2, postS * 2); // right bottom post
         effects.forEach(e => e.draw());
         if (p1Joined) player1.draw();
         if (p2Joined) player2.draw();
