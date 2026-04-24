@@ -465,7 +465,7 @@ function checkWallCollision(e) {
         const isCorner = (c.x === lx + cr && e.pos.x < c.x && (c.y === ty + cr ? e.pos.y < c.y : e.pos.y > c.y)) || (c.x === rx - cr && e.pos.x > c.x && (c.y === ty + cr ? e.pos.y < c.y : e.pos.y > c.y));
         if (!isCorner) return;
         const d = e.pos.dist(c);
-        if (d < cr - r) { const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d; e.pos.x = c.x + nx * (cr - r); e.pos.y = c.y + ny * (cr - r); const dot = e.vel.x * nx + e.vel.y * ny; if (dot > 0) { e.vel.x -= 2 * dot * nx * res; e.vel.y -= 2 * dot * ny * res; } if (e instanceof Player) e.isTouchingWall = true; }
+        if (d > cr - r && d > 0) { const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d; e.pos.x = c.x + nx * (cr - r); e.pos.y = c.y + ny * (cr - r); const dot = e.vel.x * nx + e.vel.y * ny; if (dot > 0) { e.vel.x -= (1 + res) * dot * nx; e.vel.y -= (1 + res) * dot * ny; } if (e instanceof Player) e.isTouchingWall = true; }
     });
     posts.forEach(p => { const dx = Math.abs(e.pos.x - p.x), dy = Math.abs(e.pos.y - p.y); if (dx < r && dy < r) { if (dx > dy) { e.pos.x = p.x + (e.pos.x > p.x ? r : -r); e.vel.x *= -res; } else { e.pos.y = p.y + (e.pos.y > p.y ? r : -r); e.vel.y *= -res; } if (e instanceof Player) e.isTouchingWall = true; } });
     // Goal scoring — host only
