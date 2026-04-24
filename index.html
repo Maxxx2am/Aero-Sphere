@@ -431,16 +431,6 @@ class TrialObstacle {
             this.openDuration = 50 + Math.random() * 30; // frames open
             this.closedDuration = 60 + Math.random() * 40; // frames closed
             this.cycleTimer = Math.random() * this.closedDuration; // start offset
-        } else if (type === 'wrecking') {
-            // Ball on a chain that swings
-            this.chainLen = (100 + Math.random() * 100) * gameScale;
-            this.pivotX = x + 30 * gameScale;
-            this.pivotY = Math.random() > 0.5 ? arenaY : arenaY + arenaHeight;
-            this.angle = Math.random() * Math.PI;
-            this.angleVel = (Math.random() > 0.5 ? 1 : -1) * (0.02 + Math.random() * 0.03);
-            this.ballR = 28 * gameScale;
-            this.w = this.ballR * 2; this.h = this.ballR * 2;
-            this.y = this.pivotY; // for removal check uses x only
         }
     }
     update(s) {
@@ -464,13 +454,7 @@ class TrialObstacle {
             } else {
                 if (this.cycleTimer >= this.closedDuration) { this.isOpen = true; this.cycleTimer = 0; }
             }
-        } else if (this.type === 'wrecking') {
-            this.angleVel += Math.sin(this.angle) * -0.001; // pendulum
-            this.angle += this.angleVel;
         }
-    }
-    getBallPos() {
-        return { x: this.pivotX - (trialSpeed * 0.5), y: this.pivotY + Math.cos(this.angle) * this.chainLen * (this.pivotY === arenaY ? 1 : -1), r: this.ballR };
     }
     draw() {
         const alpha = Math.min(1, (canvas.width + 200 - this.x) / 400);
@@ -528,13 +512,6 @@ class TrialObstacle {
                 ctx.fillStyle = '#ff1744';
                 ctx.fillRect(arenaX, this.y - this.h / 2, arenaWidth, this.h);
             }
-        } else if (this.type === 'wrecking') {
-            const bp = this.getBallPos();
-            ctx.strokeStyle = '#888'; ctx.lineWidth = 2 * gameScale;
-            ctx.beginPath(); ctx.moveTo(this.pivotX - (trialSpeed * 0.5), this.pivotY); ctx.lineTo(bp.x, bp.y); ctx.stroke();
-            ctx.beginPath(); ctx.arc(bp.x, bp.y, bp.r, 0, Math.PI * 2);
-            ctx.fillStyle = '#37474f'; ctx.fill();
-            ctx.strokeStyle = '#b0bec5'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = '#b0bec5'; ctx.stroke(); ctx.shadowBlur = 0;
         }
         ctx.globalAlpha = 1;
     }
@@ -574,15 +551,6 @@ class TrialObstacle {
             if (!this.isOpen) {
                 if (p.pos.y + p.radius > this.y - this.h && p.pos.y - p.radius < this.y + this.h) return 'hit';
             }
-        } else if (this.type === 'wrecking') {
-            const bp = this.getBallPos();
-            const d = Math.hypot(p.pos.x - bp.x, p.pos.y - bp.y);
-            if (d < p.radius + bp.r) {
-                const backX = p.pos.x + Math.cos(p.currentAngle + Math.PI) * p.radius;
-                const backY = p.pos.y + Math.sin(p.currentAngle + Math.PI) * p.radius;
-                if (Math.hypot(backX - bp.x, backY - bp.y) < bp.r) return 'reset';
-                return 'hit';
-            }
         }
         return null;
     }
@@ -610,7 +578,7 @@ function init() {
     else { width = winW; height = width / config.targetRatio; }
     gameScale = width / 1600; ballRadius = config.baseBallRadius * gameScale; playerRadius = config.basePlayerRadius * gameScale;
     canvas.width = winW; canvas.height = winH;
-    arenaWidth = width * 0.85; arenaHeight = height * 0.85;
+    arenaWidth = width * 0.80; arenaHeight = height * 0.80;
     arenaX = (winW - arenaWidth) / 2; arenaY = (winH - arenaHeight) / 2;
     resetPositions();
 }
@@ -670,13 +638,13 @@ function checkWallCollision(e) {
         const inQuadY = (c.y < arenaY + arenaHeight / 2) ? (e.pos.y < c.y) : (e.pos.y > c.y);
         if (!inQuadX || !inQuadY) return;
         const d = e.pos.dist(c);
-        // Entity inside the arc wall → push out to surface
-        if (d < cr && d > 0) {
+        // Entity outside the arc wall → push back in
+        if (d > cr - r && d > 0) {
             const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d;
             e.pos.x = c.x + nx * (cr - r);
             e.pos.y = c.y + ny * (cr - r);
             const dot = e.vel.x * nx + e.vel.y * ny;
-            if (dot < 0) { e.vel.x -= (1 + res) * dot * nx; e.vel.y -= (1 + res) * dot * ny; }
+            if (dot > 0) { e.vel.x -= (1 + res) * dot * nx; e.vel.y -= (1 + res) * dot * ny; }
             if (e instanceof Player) e.isTouchingWall = true;
             handledByCorner = true;
         }
@@ -707,6 +675,11 @@ function checkWallCollision(e) {
             } else {
                 if (e.pos.x + r > arenaX + arenaWidth + gw - wallT) { e.pos.x = arenaX + arenaWidth + gw - wallT - r; e.vel.x = -Math.abs(e.vel.x) * res; }
             }
+        }
+        // Goal pocket top/bottom walls
+        if (e.pos.x < lx || e.pos.x > rx) {
+            if (e.pos.y - r < gT) { e.pos.y = gT + r; e.vel.y = Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+            if (e.pos.y + r > gB) { e.pos.y = gB - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
         }
     }
 
@@ -1111,7 +1084,7 @@ function update(dt = 1) {
             let types;
             if (dist < 50)       types = ['ring','ring','spike','block'];
             else if (dist < 150) types = ['ring','spike','block','moving','crusher'];
-            else                 types = ['ring','spike','block','moving','crusher','laser','wrecking'];
+            else                 types = ['ring','spike','block','moving','crusher','laser'];
             const chosenType = types[Math.floor(Math.random() * types.length)];
             trialObstacles.push(new TrialObstacle(arenaX + arenaWidth + 80, chosenType));
             nextObsDist = trialDistance + Math.max(300, (280 + Math.random() * 380) * (1 - speedRatio / 1.8));
