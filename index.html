@@ -637,7 +637,7 @@ function checkWallCollision(e) {
         { x: lx + cr, y: by - cr },
         { x: rx - cr, y: by - cr }
     ];
-    cornerCentres.forEach(c => {
+    cornerCentres.forEach((c, idx) => {
         const inQuadX = (c.x < arenaX + arenaWidth / 2) ? (e.pos.x < c.x) : (e.pos.x > c.x);
         const inQuadY = (c.y < arenaY + arenaHeight / 2) ? (e.pos.y < c.y) : (e.pos.y > c.y);
         if (!inQuadX || !inQuadY) return;
@@ -650,6 +650,7 @@ function checkWallCollision(e) {
             const dot = e.vel.x * nx + e.vel.y * ny;
             if (dot > 0) { e.vel.x -= (1 + res) * dot * nx; e.vel.y -= (1 + res) * dot * ny; }
             if (e instanceof Player) e.isTouchingWall = true;
+            if (idx >= 2) e.isTouchingGround = true; // Bottom corners are ground
             handledByCorner = true;
         }
     });
@@ -1167,7 +1168,7 @@ function update(dt = 1) {
                 if (p1Joined && p2Joined) resolveCollision(player1, player2);
             }
             // Dribble timer
-            if (!ball.isTouchingWall && currentDribbler && !currentDribbler.isTouchingWall && !settingsModified) {
+            if (!ball.isTouchingGround && currentDribbler && !currentDribbler.isTouchingWall && !settingsModified) {
                 dribbleTime += (1/60) * ts;
                 if (dribbleTime > 5) { timerContainer.style.display = 'flex'; timerEl.innerText = dribbleTime.toFixed(2) + 's'; timerTrophy.style.display = dribbleTime > getGlobalBest() ? 'block' : 'none'; }
             } else { if (dribbleTime > 0) submitScore(dribbleTime, 'dribble'); dribbleTime = 0; currentDribbler = null; timerContainer.style.display = 'none'; }
