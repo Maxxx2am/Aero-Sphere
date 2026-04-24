@@ -289,7 +289,7 @@ class Vector2D {
 class Entity {
     constructor(x, y, radius, mass, color) {
         this.pos = new Vector2D(x, y); this.vel = new Vector2D(0, 0); this.acc = new Vector2D(0, 0);
-        this.radius = radius; this.mass = mass; this.color = color; this.isTouchingWall = false;
+        this.radius = radius; this.mass = mass; this.color = color; this.isTouchingWall = false; this.isTouchingGround = false;
     }
     applyForce(f) { this.acc.x += f.x / this.mass; this.acc.y += f.y / this.mass; }
     update(ts) {
@@ -297,7 +297,7 @@ class Entity {
         this.vel.x += this.acc.x * ts; this.vel.y += this.acc.y * ts;
         this.vel.mult(Math.pow(config.friction, ts));
         this.pos.x += this.vel.x * ts; this.pos.y += this.vel.y * ts;
-        this.acc.mult(0); this.isTouchingWall = false;
+        this.acc.mult(0); this.isTouchingWall = false; this.isTouchingGround = false;
     }
 }
 
@@ -658,7 +658,7 @@ function checkWallCollision(e) {
     if (!handledByCorner) {
         // Top / bottom
         if (e.pos.y - r < ty) { e.pos.y = ty + r; e.vel.y =  Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
-        if (e.pos.y + r > by) { e.pos.y = by - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+        if (e.pos.y + r > by) { e.pos.y = by - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; e.isTouchingGround = true; }
 
         // Left wall
         if (e.pos.x - r < lx) {
