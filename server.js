@@ -7,7 +7,15 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+
+// Optimized socket.io for low latency
+const io = new Server(server, {
+    cors: { origin: "*" },
+    pingInterval: 2000,
+    pingTimeout: 5000,
+    transports: ['websocket'], // websocket only — no polling fallback for speed
+    perMessageDeflate: false   // disable compression for lower latency
+});
 
 const PORT = process.env.PORT || 3000;
 const DB_FILE = path.join(__dirname, 'leaderboard.json');
@@ -17,10 +25,7 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // Global Leaderboard - Persistent storage
-let leaderboards = {
-    dribble: [],
-    trials: []
-};
+let leaderboards = { dribble: [], trials: [], rise: [] };
 
 if (fs.existsSync(DB_FILE)) {
     try {
@@ -28,7 +33,7 @@ if (fs.existsSync(DB_FILE)) {
         if (Array.isArray(data)) {
             leaderboards.dribble = data;
         } else {
-            leaderboards = { ...leaderboards, ...data };
+            leaderboards = { dribble: [], trials: [], rise: [], ...data };
         }
     } catch (e) { console.error("Error loading leaderboard:", e); }
 }
@@ -37,23 +42,24 @@ function saveLeaderboard() {
     fs.writeFileSync(DB_FILE, JSON.stringify(leaderboards, null, 2));
 }
 
-// API to get all scores
 app.get('/api/leaderboard', (req, res) => {
     res.json(leaderboards);
 });
 
-// API to submit a new score
 app.post('/api/leaderboard', (req, res) => {
     const { name, score, category } = req.body;
-    const key = category === 'trials' ? 'trials' : 'dribble';
-    
+    let key = 'dribble';
+    if (category === 'trials') key = 'trials';
+    else if (category === 'rise') key = 'rise';
+
     if (!name || typeof score !== 'number') {
         return res.status(400).json({ error: "Invalid data" });
     }
 
+    if (!leaderboards[key]) leaderboards[key] = [];
     const currentBoard = leaderboards[key];
     const existingIndex = currentBoard.findIndex(e => e.name.toLowerCase() === name.toLowerCase());
-    
+
     if (existingIndex !== -1) {
         if (score > currentBoard[existingIndex].score) {
             currentBoard[existingIndex].score = score;
@@ -73,12 +79,15 @@ let socketRooms = {};
 let rooms = {};
 
 io.on('connection', (socket) => {
+    console.log(`+ connect ${socket.id}`);
+
     socket.on('joinRoom', (roomID) => {
         socket.join(roomID);
         socketRooms[socket.id] = roomID;
         if (!rooms[roomID]) rooms[roomID] = new Set();
         rooms[roomID].add(socket.id);
         socket.to(roomID).emit('userJoined');
+        console.log(`  ${socket.id} joined room ${roomID} (${rooms[roomID].size} players)`);
     });
 
     socket.on('getRooms', () => {
@@ -88,10 +97,12 @@ io.on('connection', (socket) => {
         socket.emit('roomsList', open);
     });
 
+    // Input relay: host receives client inputs with minimal processing
     socket.on('playerInput', (data) => {
         socket.to(data.roomID).emit('remoteInput', data.keys);
     });
 
+    // State sync: client receives full game state from host
     socket.on('syncGameState', (data) => {
         socket.to(data.roomID).emit('gameStateUpdate', data.state);
     });
@@ -102,6 +113,7 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         const roomID = socketRooms[socket.id];
+        console.log(`- disconnect ${socket.id} (room: ${roomID})`);
         if (roomID) {
             socket.to(roomID).emit('opponentDisconnected');
             delete socketRooms[socket.id];
@@ -114,5 +126,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-    console.log(`Aero-Sphere V5 Server active on port ${PORT}`);
+    console.log(`Aero-Sphere Server on port ${PORT} [WebSocket-only, low-latency mode]`);
 });
