@@ -311,9 +311,1058 @@ let trialAccel = 0, trialJumpHeld = false;
 const TRIAL_BASE_SPEED = 5.0, TRIAL_MAX_SPEED = 28.0;
 
 // ─── Rise State ───────────────────────────────────────────────────────────────
-let riseHeight = 0, riseMaxHeight = 0, riseCamY = 0, riseObstacles = [], riseNextObsHeight = 800;
-let riseDeathFloorY = 0, riseRecordHeight = 0, riseActive = false;
-const RISE_GRAVITY_SCALE = 0.85; // slightly lighter gravity for rise mode
+let riseHeight = 0, riseMaxHeight = 0, riseCamY = 0, riseObstacles = [], riseNextObsHeight = 0;
+let riseDeathFloor = 0, riseRecordHeight = 0, riseActive = false;
+let risePlayerWorldX = 0, risePlayerWorldY = 0, risePlayerVelX = 0, risePlayerVelY = 0;
+let riseBallWorldX = 0, riseBallWorldY = 0, riseBallVelX = 0, riseBallVelY = 0;
+const RISE_GRAVITY_SCALE = 0.85;
+
+// ─── Multiplayer State ────────────────────────────────────────────────────────
+let currentRoom = null, isHost = false, clientGoalVisible = false, clientShowGo = false;
+
+// ─── Math helpers ─────────────────────────────────────────────────────────────
+class Vector2D {
+    constructor(x = 0, y = 0) { this.x = x; this.y = y; }
+    add(v) { this.x += v.x; this.y += v.y; return this; }
+    sub(v) { return new Vector2D(this.x - v.x, this.y - v.y); }
+    mult(n) { this.x *= n; this.y *= n; return this; }
+    mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+    dist(v) { return Math.sqrt((this.x - v.x) ** 2 + (this.y - v.y) ** 2); }
+}
+
+// ─── Entities ─────────────────────────────────────────────────────────────────
+class Entity {
+    constructor(x, y, radius, mass, color) {
+        this.pos = new Vector2D(x, y); this.vel = new Vector2D(0, 0); this.acc = new Vector2D(0, 0);
+        this.radius = radius; this.mass = mass; this.color = color; this.isTouchingWall = false; this.isTouchingGround = false;
+    }
+    applyForce(f) { this.acc.x += f.x / this.mass; this.acc.y += f.y / this.mass; }
+    update(ts) {
+        this.applyForce(new Vector2D(0, config.gravity * this.mass * gameScale));
+        this.vel.x += this.acc.x * ts; this.vel.y += this.acc.y * ts;
+        this.vel.mult(Math.pow(config.friction, ts));
+        this.pos.x += this.vel.x * ts; this.pos.y += this.vel.y * ts;
+        this.acc.mult(0); this.isTouchingWall = false; this.isTouchingGround = false;
+    }
+}
+
+class Player extends Entity {
+    constructor(x, y, color, controls) {
+        super(x, y, playerRadius, 1.0, color);
+        this.controls = controls;
+        this.currentAngle = color === config.colors.blue ? 0 : Math.PI;
+        this.targetAngle = this.currentAngle;
+        this.boost = 112; this.jumps = 1; this.hasJump = true; this.pulse = 0;
+        this.jumping = false; this.jumpCooldown = 0; this.isRecharging = false;
+    }
+    handleInput(ts) {
+        let dx = 0, dy = 0;
+        if (keys[this.controls.up]    || (this.controls.up2    && keys[this.controls.up2]))    dy -= 1;
+        if (keys[this.controls.down]  || (this.controls.down2  && keys[this.controls.down2]))  dy += 1;
+        if (keys[this.controls.left]  || (this.controls.left2  && keys[this.controls.left2]))  dx -= 1;
+        if (keys[this.controls.right] || (this.controls.right2 && keys[this.controls.right2])) dx += 1;
+        if (dx !== 0 || dy !== 0) this.targetAngle = Math.atan2(dy, dx);
+        let diff = this.targetAngle - this.currentAngle;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff >  Math.PI) diff -= Math.PI * 2;
+        this.currentAngle += diff * config.rotationSensitivity * ts;
+        if (this.jumpCooldown > 0) this.jumpCooldown -= ts;
+        // Strafe
+        if (dx !== 0) {
+            const power = this.isTouchingWall ? config.enginePower : config.enginePower * 0.3;
+            this.applyForce(new Vector2D(dx * power * gameScale, 0));
+        }
+        const boostKey = keys[this.controls.boost] || (this.controls.boost2 && keys[this.controls.boost2]) || (this === player2 && keys['ShiftRight']);
+        const jumpKey  = keys[this.controls.jump]  || (this.controls.jump2  && keys[this.controls.jump2])  || (this === player2 && (keys['Slash'] || keys['ShiftRight']));
+        // Boost — infinite in trials, limited in arena
+        const hasBoost = gameState === 'trials' ? true : this.boost > 0;
+        if (boostKey && hasBoost) {
+            if (gameState !== 'trials') { this.boost -= 0.4 * ts; this.isRecharging = false; }
+            this.applyForce(new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle)).mult(config.boostPower * gameScale));
+            this.createBoostFlame();
+        } else if (this.isTouchingWall) { this.isRecharging = true; }
+        if (this.isRecharging) this.boost = Math.min(112, this.boost + 1.35 * ts);
+        if (this.isTouchingWall) { this.jumps = gameState === 'trials' ? 3 : 1; this.hasJump = true; }
+        if (jumpKey && !this.jumping && (this.jumps > 0 || this.hasJump) && this.jumpCooldown <= 0) {
+            const jumpDir = new Vector2D(Math.cos(this.currentAngle), Math.sin(this.currentAngle));
+            // If on ground and not aiming up, give a vertical boost so they actually leave the floor
+            if (this.isTouchingGround && jumpDir.y > -0.5) { jumpDir.y = -0.75; jumpDir.x *= 0.5; }
+            this.applyForce(jumpDir.mult(5.8 * gameScale));
+            this.jumping = true; this.jumps--; this.hasJump = false; this.jumpCooldown = 30;
+            effects.push(new JumpAura(this.pos.x, this.pos.y));
+        }
+        if (!jumpKey) this.jumping = false;
+    }
+    createBoostFlame() {
+        const ba = this.currentAngle + Math.PI;
+        for (let i = 0; i < 2; i++) {
+            const a = ba + (Math.random() - 0.5) * 0.4, spd = (2 + Math.random() * 3) * gameScale;
+            particles.push(new Particle(this.pos.x + Math.cos(ba) * this.radius, this.pos.y + Math.sin(ba) * this.radius, this.color, new Vector2D(Math.cos(a) * spd, Math.sin(a) * spd), 'spike'));
+        }
+    }
+    draw() {
+        ctx.save(); ctx.translate(this.pos.x, this.pos.y); ctx.rotate(this.currentAngle);
+        if (this.pulse > 0) {
+            ctx.beginPath(); ctx.arc(0, 0, this.radius + (20 - this.pulse) * gameScale, 0, Math.PI * 2);
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5 * gameScale; ctx.stroke(); this.pulse--;
+        }
+        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill();
+        ctx.beginPath(); ctx.moveTo(this.radius * 0.6, 0); ctx.lineTo(-this.radius * 0.3, this.radius * 0.4); ctx.lineTo(-this.radius * 0.3, -this.radius * 0.4); ctx.closePath(); ctx.fillStyle = config.colors.bg; ctx.fill();
+        // Engine arc — drawn at back, used for flip reset
+        ctx.beginPath(); ctx.arc(0, 0, this.radius * 0.85, 0.75 * Math.PI, 1.25 * Math.PI);
+        ctx.strokeStyle = config.colors.bg; ctx.lineWidth = 2.5 * gameScale; ctx.stroke();
+        ctx.restore();
+    }
+}
+
+class Ball extends Entity {
+    constructor(x, y) { super(x, y, ballRadius, 0.35, config.colors.ball); }
+    draw() {
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff'; ctx.shadowBlur = 15 * gameScale; ctx.shadowColor = 'rgba(255,255,255,0.5)'; ctx.fill(); ctx.shadowBlur = 0;
+        // seams
+        ctx.beginPath(); ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 2 * gameScale;
+        for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; ctx.moveTo(this.pos.x + Math.cos(a) * this.radius * 0.4, this.pos.y + Math.sin(a) * this.radius * 0.4); ctx.lineTo(this.pos.x + Math.cos(a) * this.radius, this.pos.y + Math.sin(a) * this.radius); }
+        ctx.stroke();
+        const grad = ctx.createRadialGradient(this.pos.x - this.radius * 0.3, this.pos.y - this.radius * 0.3, this.radius * 0.1, this.pos.x, this.pos.y, this.radius);
+        grad.addColorStop(0, 'rgba(255,255,255,0.8)'); grad.addColorStop(0.5, 'rgba(255,255,255,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.05)');
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2); ctx.fillStyle = grad; ctx.fill();
+    }
+}
+
+// ─── Trials Obstacle ──────────────────────────────────────────────────────────
+class TrialObstacle {
+    constructor(x, type) {
+        this.x = x; this.type = type; this.w = 55 * gameScale; this.passed = false;
+        const speedRatio = Math.min(1, (trialSpeed - TRIAL_BASE_SPEED) / (TRIAL_MAX_SPEED - TRIAL_BASE_SPEED));
+
+        if (type === 'ring') {
+            const minGap = 160 * gameScale, maxGap = 320 * gameScale;
+            this.gapS = maxGap - speedRatio * (maxGap - minGap);
+            this.gapY = arenaY + 80 * gameScale + Math.random() * (arenaHeight - 160 * gameScale - this.gapS);
+        } else if (type === 'spike') {
+            this.w = 40 * gameScale;
+            this.fromTop = Math.random() > 0.5;
+            this.h = (180 + Math.random() * 180) * gameScale;
+            this.y = this.fromTop ? arenaY : arenaY + arenaHeight - this.h;
+        } else if (type === 'block') {
+            this.w = (80 + Math.random() * 60) * gameScale;
+            this.h = (80 + Math.random() * 80) * gameScale;
+            this.y = arenaY + 60 * gameScale + Math.random() * (arenaHeight - 120 * gameScale - this.h);
+        } else if (type === 'moving') {
+            // Vertically moving block — constrained fully within arena
+            this.w = 50 * gameScale; this.h = 90 * gameScale;
+            const margin = 20 * gameScale;
+            const minY = arenaY + margin;
+            const maxY = arenaY + arenaHeight - this.h - margin;
+            this.baseY = minY + Math.random() * (maxY - minY);
+            this.y = this.baseY;
+            // Amplitude clamped so block never exits arena
+            const maxAmp = Math.min(this.baseY - minY, maxY - this.baseY);
+            this.moveAmp = Math.min((60 + Math.random() * 80) * gameScale, maxAmp);
+            this.moveSpd = 0.8 + Math.random() * 0.8; // slower phase speed
+            this.phase = Math.random() * Math.PI * 2;
+        } else if (type === 'crusher') {
+            // Two blocks that close in and open — slower, start open
+            this.w = 60 * gameScale; this.h = 0;
+            this.gapS = (160 + Math.random() * 60) * gameScale;
+            this.centerY = arenaY + arenaHeight * 0.35 + Math.random() * arenaHeight * 0.3;
+            this.phase = Math.PI / 2; // start at fully open
+            this.crushSpd = 0.6 + Math.random() * 0.5; // much slower
+            this.crushAmp = Math.min(this.centerY - arenaY - this.gapS / 2 - 10 * gameScale,
+                                     arenaY + arenaHeight - this.centerY - this.gapS / 2 - 10 * gameScale);
+        } else if (type === 'laser') {
+            // Horizontal laser beam with gap window that opens/closes
+            this.w = 40 * gameScale; this.h = 8 * gameScale;
+            this.y = arenaY + 80 * gameScale + Math.random() * (arenaHeight - 160 * gameScale);
+            this.isOpen = false; this.openTimer = 0;
+            this.openDuration = 50 + Math.random() * 30; // frames open
+            this.closedDuration = 60 + Math.random() * 40; // frames closed
+            this.cycleTimer = Math.random() * this.closedDuration; // start offset
+        }
+    }
+    update(s) {
+        this.x -= s;
+        if (this.type === 'moving') {
+            this.phase += 0.02 * this.moveSpd;
+            const newY = this.baseY + Math.sin(this.phase) * this.moveAmp;
+            // Clamp to arena bounds
+            this.y = Math.max(arenaY, Math.min(arenaY + arenaHeight - this.h, newY));
+        } else if (this.type === 'crusher') {
+            this.phase += 0.025 * this.crushSpd;
+            const open = Math.abs(Math.sin(this.phase));
+            const rawGapHalf = this.gapS / 2 + this.crushAmp * (1 - open);
+            // Clamp so blocks don't exceed arena bounds
+            const maxHalf = Math.min(this.centerY - arenaY - 5 * gameScale, arenaY + arenaHeight - this.centerY - 5 * gameScale);
+            this.gapHalf = Math.min(rawGapHalf, maxHalf);
+        } else if (this.type === 'laser') {
+            this.cycleTimer++;
+            if (this.isOpen) {
+                if (this.cycleTimer >= this.openDuration) { this.isOpen = false; this.cycleTimer = 0; }
+            } else {
+                if (this.cycleTimer >= this.closedDuration) { this.isOpen = true; this.cycleTimer = 0; }
+            }
+        }
+    }
+    draw() {
+        const alpha = Math.min(1, (canvas.width + 200 - this.x) / 400);
+        ctx.globalAlpha = alpha * 0.9;
+        if (this.type === 'ring') {
+            const topH = this.gapY - arenaY, botH = (arenaY + arenaHeight) - (this.gapY + this.gapS);
+            ctx.fillStyle = '#1a1a2e'; ctx.fillRect(this.x, arenaY, this.w, topH); ctx.fillRect(this.x, this.gapY + this.gapS, this.w, botH);
+            ctx.strokeStyle = '#4fc3f7'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 12 * gameScale; ctx.shadowColor = '#4fc3f7';
+            ctx.strokeRect(this.x, arenaY, this.w, topH); ctx.strokeRect(this.x, this.gapY + this.gapS, this.w, botH);
+            ctx.strokeStyle = '#00e676'; ctx.lineWidth = 2 * gameScale; ctx.shadowColor = '#00e676';
+            ctx.beginPath(); ctx.moveTo(this.x, this.gapY); ctx.lineTo(this.x + this.w, this.gapY); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(this.x, this.gapY + this.gapS); ctx.lineTo(this.x + this.w, this.gapY + this.gapS); ctx.stroke();
+            ctx.shadowBlur = 0;
+        } else if (this.type === 'spike') {
+            ctx.fillStyle = '#2d1b1b'; ctx.fillRect(this.x, this.y, this.w, this.h);
+            ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 12 * gameScale; ctx.shadowColor = '#ff5252';
+            ctx.strokeRect(this.x, this.y, this.w, this.h); ctx.shadowBlur = 0;
+        } else if (this.type === 'block') {
+            ctx.fillStyle = '#1a2d1b'; ctx.fillRect(this.x, this.y, this.w, this.h);
+            ctx.strokeStyle = '#69f0ae'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 12 * gameScale; ctx.shadowColor = '#69f0ae';
+            ctx.strokeRect(this.x, this.y, this.w, this.h); ctx.shadowBlur = 0;
+        } else if (this.type === 'moving') {
+            ctx.fillStyle = '#2d1a2e'; ctx.fillRect(this.x, this.y, this.w, this.h);
+            ctx.strokeStyle = '#ce93d8'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 12 * gameScale; ctx.shadowColor = '#ce93d8';
+            ctx.strokeRect(this.x, this.y, this.w, this.h);
+            // Arrow indicating movement
+            ctx.fillStyle = '#ce93d8'; ctx.font = `${14 * gameScale}px Arial`;
+            ctx.fillText('↕', this.x + this.w / 2 - 7 * gameScale, this.y + this.h / 2 + 5 * gameScale);
+            ctx.shadowBlur = 0;
+        } else if (this.type === 'crusher') {
+            const gh = this.gapHalf || this.gapS / 2;
+            const topH = this.centerY - gh - arenaY;
+            const botY = this.centerY + gh, botH = arenaY + arenaHeight - botY;
+            ctx.fillStyle = '#2d1b1b';
+            if (topH > 0) ctx.fillRect(this.x, arenaY, this.w, topH);
+            if (botH > 0) ctx.fillRect(this.x, botY, this.w, botH);
+            ctx.strokeStyle = '#ff6f00'; ctx.lineWidth = 3 * gameScale; ctx.shadowBlur = 14 * gameScale; ctx.shadowColor = '#ff6f00';
+            if (topH > 0) ctx.strokeRect(this.x, arenaY, this.w, topH);
+            if (botH > 0) ctx.strokeRect(this.x, botY, this.w, botH);
+            ctx.shadowBlur = 0;
+        } else if (this.type === 'laser') {
+            if (!this.isOpen) {
+                const beamAlpha = 0.5 + Math.sin(Date.now() / 80) * 0.4;
+                ctx.globalAlpha = alpha * beamAlpha;
+                ctx.fillStyle = '#ff1744';
+                ctx.fillRect(arenaX, this.y - this.h / 2, arenaWidth, this.h);
+                ctx.shadowBlur = 20 * gameScale; ctx.shadowColor = '#ff1744';
+                ctx.strokeStyle = '#ff8a80'; ctx.lineWidth = 2 * gameScale;
+                ctx.strokeRect(arenaX, this.y - this.h / 2, arenaWidth, this.h);
+                ctx.shadowBlur = 0;
+            } else {
+                // Show outline / warning
+                ctx.globalAlpha = alpha * 0.15;
+                ctx.fillStyle = '#ff1744';
+                ctx.fillRect(arenaX, this.y - this.h / 2, arenaWidth, this.h);
+            }
+        }
+        ctx.globalAlpha = 1;
+    }
+    checkCollision(p) {
+        const r = p.radius * 0.85; // slightly more forgiving hitbox
+        if (this.type === 'ring') {
+            if (p.pos.x + r > this.x && p.pos.x - r < this.x + this.w) {
+                const inGap = p.pos.y - r > this.gapY && p.pos.y + r < this.gapY + this.gapS;
+                if (!inGap) {
+                    const backX = p.pos.x + Math.cos(p.currentAngle + Math.PI) * p.radius;
+                    const backY = p.pos.y + Math.sin(p.currentAngle + Math.PI) * p.radius;
+                    const topBar = backY > arenaY && backY < this.gapY;
+                    const botBar = backY > this.gapY + this.gapS && backY < arenaY + arenaHeight;
+                    if ((topBar || botBar) && backX > this.x && backX < this.x + this.w) return 'reset';
+                    return 'hit';
+                }
+            }
+        } else if (this.type === 'spike' || this.type === 'block' || this.type === 'moving') {
+            const obs = { x: this.x, y: this.y, w: this.w, h: this.h };
+            if (p.pos.x + r > obs.x && p.pos.x - r < obs.x + obs.w &&
+                p.pos.y + r > obs.y && p.pos.y - r < obs.y + obs.h) {
+                const backX = p.pos.x + Math.cos(p.currentAngle + Math.PI) * p.radius;
+                const backY = p.pos.y + Math.sin(p.currentAngle + Math.PI) * p.radius;
+                if (backX > obs.x && backX < obs.x + obs.w && backY > obs.y && backY < obs.y + obs.h) return 'reset';
+                return 'hit';
+            }
+        } else if (this.type === 'crusher') {
+            const gh = this.gapHalf || this.gapS / 2;
+            const topH = this.centerY - gh - arenaY;
+            const botY = this.centerY + gh;
+            // Top block
+            if (topH > 0 && p.pos.x + r > this.x && p.pos.x - r < this.x + this.w &&
+                p.pos.y - r < arenaY + topH && p.pos.y + r > arenaY) return 'hit';
+            // Bottom block
+            if (p.pos.x + r > this.x && p.pos.x - r < this.x + this.w &&
+                p.pos.y + r > botY && p.pos.y - r < arenaY + arenaHeight) return 'hit';
+        } else if (this.type === 'laser') {
+            if (!this.isOpen) {
+                const laserH = this.h * 0.5; // tighter laser hitbox
+                // Horizontal check: only kill if player is overlapping the beam horizontally
+                if (p.pos.x + r > this.x && p.pos.x - r < this.x + this.w) {
+                    if (p.pos.y + r > this.y - laserH && p.pos.y - r < this.y + laserH) return 'hit';
+                }
+            }
+        }
+        return null;
+    }
+}
+
+// ─── Rise Obstacle ────────────────────────────────────────────────────────────
+class RiseObstacle {
+    constructor(worldY, type, difficulty) {
+        this.worldY = worldY; // world Y of obstacle center (negative = above floor)
+        this.type = type;
+        const d = Math.max(0, Math.min(1, difficulty));
+
+        if (type === 'platform') {
+            // Wide floating platform — land on top or dodge
+            this.w = (160 + Math.random() * 140) * gameScale;
+            this.h = 16 * gameScale;
+            // X position: somewhere inside arena (not flush to walls)
+            const maxX = arenaX + arenaWidth - this.w - 30 * gameScale;
+            this.x = arenaX + 30 * gameScale + Math.random() * (maxX - arenaX - 30 * gameScale);
+        } else if (type === 'spike-wall') {
+            // Wall with a gap — must fly through the gap
+            const minGap = (280 - d * 100) * gameScale;
+            this.gapW = Math.max(minGap, 120 * gameScale);
+            const innerW = arenaWidth - 30 * gameScale; // usable width
+            const maxGapX = arenaX + 15 * gameScale + innerW - this.gapW;
+            this.gapX = arenaX + 15 * gameScale + Math.random() * (maxGapX - arenaX - 15 * gameScale);
+            this.h = 20 * gameScale;
+        } else if (type === 'moving-block') {
+            // Horizontal moving block
+            this.w = (70 + Math.random() * 50) * gameScale;
+            this.h = 20 * gameScale;
+            const range = (arenaWidth - this.w - 40 * gameScale);
+            this.x = arenaX + 20 * gameScale + Math.random() * range;
+            this.moveRange = Math.min(range * 0.4, 120 * gameScale);
+            this.baseX = this.x;
+            this.phase = Math.random() * Math.PI * 2;
+            this.speed = 0.025 + d * 0.025;
+        }
+    }
+
+    update() {
+        if (this.type === 'moving-block') {
+            this.phase += this.speed;
+            this.x = this.baseX + Math.sin(this.phase) * this.moveRange;
+        }
+    }
+
+    // Draw using wToS (world-to-screen Y function)
+    drawRise(wToS) {
+        const sy = wToS(this.worldY);
+        // Only draw if on screen
+        if (sy < arenaY - 100 * gameScale || sy > arenaY + arenaHeight + 100 * gameScale) return;
+
+        ctx.save();
+        if (this.type === 'platform') {
+            ctx.fillStyle = '#1a2e3a';
+            ctx.fillRect(this.x, sy - this.h / 2, this.w, this.h);
+            ctx.strokeStyle = '#4fc3f7'; ctx.lineWidth = 2 * gameScale;
+            ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = '#4fc3f7';
+            ctx.strokeRect(this.x, sy - this.h / 2, this.w, this.h);
+            ctx.shadowBlur = 0;
+        } else if (this.type === 'spike-wall') {
+            const lx = arenaX + 5 * gameScale, rx = arenaX + arenaWidth - 5 * gameScale;
+            const leftW = this.gapX - lx;
+            const rightStart = this.gapX + this.gapW;
+            const rightW = rx - rightStart;
+            ctx.fillStyle = '#2d1b1b';
+            if (leftW > 0) ctx.fillRect(lx, sy - this.h / 2, leftW, this.h);
+            if (rightW > 0) ctx.fillRect(rightStart, sy - this.h / 2, rightW, this.h);
+            ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2 * gameScale;
+            ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = '#ff5252';
+            if (leftW > 0) ctx.strokeRect(lx, sy - this.h / 2, leftW, this.h);
+            if (rightW > 0) ctx.strokeRect(rightStart, sy - this.h / 2, rightW, this.h);
+            ctx.shadowBlur = 0;
+        } else if (this.type === 'moving-block') {
+            ctx.fillStyle = '#2d1a2e';
+            ctx.fillRect(this.x, sy - this.h / 2, this.w, this.h);
+            ctx.strokeStyle = '#ce93d8'; ctx.lineWidth = 2 * gameScale;
+            ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = '#ce93d8';
+            ctx.strokeRect(this.x, sy - this.h / 2, this.w, this.h);
+            ctx.shadowBlur = 0;
+        }
+        ctx.restore();
+    }
+
+    // Check collision with player in world space
+    checkPlayerCollision(px, py, pr) {
+        const halfH = this.h / 2;
+        if (this.type === 'platform') {
+            // Only kill if player hits platform from sides or bottom
+            // Landing on top is OK (it's a safe platform — but we just kill on all sides for simplicity of rise)
+            // Actually platforms are SAFE to land on — they help. Only kill if clipped from below badly.
+            // For simplicity: platform is passable from above (landing), deadly from sides
+            const inX = px + pr > this.x && px - pr < this.x + this.w;
+            const inY = py + pr > this.worldY - halfH && py - pr < this.worldY + halfH;
+            if (inX && inY) {
+                // Is player coming from above (landing)?
+                if (risePlayerVelY > 0 && py < this.worldY) {
+                    // Land on platform — stop falling
+                    risePlayerWorldY = this.worldY - halfH - pr;
+                    risePlayerVelY = 0;
+                    player1.isTouchingGround = true; player1.isTouchingWall = true;
+                    player1.jumps = 1; player1.hasJump = true;
+                    return false;
+                }
+                return true; // hit from side or below = death
+            }
+        } else if (this.type === 'spike-wall') {
+            const lx = arenaX + 5 * gameScale;
+            const leftEnd = this.gapX;
+            const rightStart = this.gapX + this.gapW;
+            const rx = arenaX + arenaWidth - 5 * gameScale;
+            const inY = py + pr > this.worldY - halfH && py - pr < this.worldY + halfH;
+            if (inY) {
+                if (px - pr < leftEnd && px + pr > lx) return true;
+                if (px + pr > rightStart && px - pr < rx) return true;
+            }
+        } else if (this.type === 'moving-block') {
+            const inX = px + pr > this.x && px - pr < this.x + this.w;
+            const inY = py + pr > this.worldY - halfH && py - pr < this.worldY + halfH;
+            if (inX && inY) return true;
+        }
+        return false;
+    }
+}
+
+class Particle {
+    constructor(x, y, color, vel, type = 'circle') { this.pos = new Vector2D(x, y); this.vel = vel; this.life = 1.0; this.color = color; this.type = type; }
+    update(ts) { this.pos.x += this.vel.x * ts; this.pos.y += this.vel.y * ts; this.life -= 0.035 * ts; }
+    draw() {
+        ctx.globalAlpha = Math.max(0, this.life);
+        if (this.type === 'spike') { ctx.beginPath(); ctx.moveTo(this.pos.x, this.pos.y); ctx.lineTo(this.pos.x - this.vel.x * 2.5, this.pos.y - this.vel.y * 2.5); ctx.strokeStyle = this.color; ctx.lineWidth = 2 * gameScale; ctx.stroke(); }
+        else { ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, 3 * gameScale, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); }
+        ctx.globalAlpha = 1;
+    }
+}
+class JumpAura {
+    constructor(x, y) { this.x = x; this.y = y; this.life = 1.0; }
+    draw() { ctx.beginPath(); ctx.arc(this.x, this.y, (8 + (1 - this.life) * 45) * gameScale, 0, Math.PI * 2); ctx.strokeStyle = `rgba(255,255,255,${this.life * 0.4})`; ctx.lineWidth = 1.5 * gameScale; ctx.stroke(); this.life -= 0.06; }
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+function init() {
+    const winW = window.innerWidth, winH = window.innerHeight;
+    if (winW / winH > config.targetRatio) { height = winH; width = height * config.targetRatio; }
+    else { width = winW; height = width / config.targetRatio; }
+    gameScale = width / 1600; ballRadius = config.baseBallRadius * gameScale; playerRadius = config.basePlayerRadius * gameScale;
+    canvas.width = winW; canvas.height = winH;
+    arenaWidth = width * 0.80; arenaHeight = height * 0.80;
+    arenaX = (winW - arenaWidth) / 2; arenaY = (winH - arenaHeight) / 2;
+    resetPositions();
+}
+
+function resetPositions() {
+    const wallT = 5 * gameScale; // matches physics inset
+    const groundY = arenaY + arenaHeight - wallT - playerRadius;
+    // Local default: P1 = WASD, P2 = Arrows
+    player1 = new Player(arenaX + wallT + 150 * gameScale, groundY, config.colors.blue,
+        { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost });
+    player2 = new Player(arenaX + arenaWidth - wallT - 150 * gameScale, groundY, config.colors.orange,
+        { up: keybinds.p2up, down: keybinds.p2down, left: keybinds.p2left, right: keybinds.p2right, jump: keybinds.p2jump, boost: keybinds.p2boost });
+    ball = new Ball(arenaX + arenaWidth / 2, arenaY + arenaHeight * 2 / 3);
+    const midY = arenaY + arenaHeight / 2, gh = config.goalHeight * gameScale / 2;
+    posts = [{ x: arenaX, y: midY - gh }, { x: arenaX, y: midY + gh }, { x: arenaX + arenaWidth, y: midY - gh }, { x: arenaX + arenaWidth, y: midY + gh }];
+    trialObstacles = []; trialDistance = 0; trialSpeed = TRIAL_BASE_SPEED; nextObsDist = 600; trialAccel = 0;
+}
+
+// ─── Arena Physics ────────────────────────────────────────────────────────────
+function hexToRgba(hex, a) { const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})`; }
+
+function checkWallCollision(e) {
+    if (gameState === 'trials' && e === player1) {
+        if (e.pos.y < arenaY + e.radius || e.pos.y > arenaY + arenaHeight - e.radius) { endTrials(); return; }
+        if (e.pos.x < arenaX + e.radius) { e.pos.x = arenaX + e.radius; e.vel.x *= -0.6; e.isTouchingWall = true; }
+        if (e.pos.x > arenaX + arenaWidth - e.radius) { e.pos.x = arenaX + arenaWidth - e.radius; e.vel.x *= -0.6; e.isTouchingWall = true; }
+        return;
+    }
+
+    const wallT = 5 * gameScale;
+    const lx = arenaX + wallT, rx = arenaX + arenaWidth - wallT;
+    const ty = arenaY + wallT,  by = arenaY + arenaHeight - wallT;
+    const r = e.radius;
+    const gH  = config.goalHeight * gameScale;
+    const gT  = (arenaY + arenaHeight / 2) - gH / 2;
+    const gB  = (arenaY + arenaHeight / 2) + gH / 2;
+    const gw  = config.goalWidth * gameScale;
+    const res = 0.88;
+    const cr  = config.cornerRadius * gameScale;
+
+    // ── 1. CORNERS FIRST ────────────────────────────────────────────────────────
+    // The arena corners are concave arcs of radius cr.
+    // Corner centre sits at (lx+cr, ty+cr) etc.
+    // Entity centre must stay at distance >= (cr - r) from corner centre.
+    // Trigger: entity is in the corner quadrant AND d < cr (inside the arc wall).
+    // Push outward to exactly (cr - r) from corner centre.
+    // Corners run BEFORE flat walls so there is no double-correction fighting.
+    let handledByCorner = false;
+    const cornerCentres = [
+        { x: lx + cr, y: ty + cr },
+        { x: rx - cr, y: ty + cr },
+        { x: lx + cr, y: by - cr },
+        { x: rx - cr, y: by - cr }
+    ];
+    cornerCentres.forEach((c, idx) => {
+        const inQuadX = (c.x < arenaX + arenaWidth / 2) ? (e.pos.x < c.x) : (e.pos.x > c.x);
+        const inQuadY = (c.y < arenaY + arenaHeight / 2) ? (e.pos.y < c.y) : (e.pos.y > c.y);
+        if (!inQuadX || !inQuadY) return;
+        const d = e.pos.dist(c);
+        // Entity outside the arc wall → push back in
+        if (d > cr - r && d > 0) {
+            const nx = (e.pos.x - c.x) / d, ny = (e.pos.y - c.y) / d;
+            e.pos.x = c.x + nx * (cr - r);
+            e.pos.y = c.y + ny * (cr - r);
+            const dot = e.vel.x * nx + e.vel.y * ny;
+            if (dot > 0) { e.vel.x -= (1 + res) * dot * nx; e.vel.y -= (1 + res) * dot * ny; }
+            if (e instanceof Player) e.isTouchingWall = true;
+            if (idx >= 2) e.isTouchingGround = true; // Bottom corners are ground
+            handledByCorner = true;
+        }
+    });
+
+    // ── 2. FLAT WALLS (skip if corner already resolved this frame) ───────────────
+    if (!handledByCorner) {
+        // Top / bottom
+        if (e.pos.y - r < ty) { e.pos.y = ty + r; e.vel.y =  Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+        if (e.pos.y + r > by) { e.pos.y = by - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; e.isTouchingGround = true; }
+
+        // Left wall
+        if (e.pos.x - r < lx) {
+            const inGoal = e.pos.y > gT && e.pos.y < gB;
+            if (!inGoal) {
+                e.pos.x = lx + r; e.vel.x = Math.abs(e.vel.x) * res;
+                if (e instanceof Player) e.isTouchingWall = true;
+            } else {
+                if (e.pos.x - r < arenaX - gw + wallT) { e.pos.x = arenaX - gw + wallT + r; e.vel.x = Math.abs(e.vel.x) * res; }
+            }
+        }
+        // Right wall
+        if (e.pos.x + r > rx) {
+            const inGoal = e.pos.y > gT && e.pos.y < gB;
+            if (!inGoal) {
+                e.pos.x = rx - r; e.vel.x = -Math.abs(e.vel.x) * res;
+                if (e instanceof Player) e.isTouchingWall = true;
+            } else {
+                if (e.pos.x + r > arenaX + arenaWidth + gw - wallT) { e.pos.x = arenaX + arenaWidth + gw - wallT - r; e.vel.x = -Math.abs(e.vel.x) * res; }
+            }
+        }
+        // Goal pocket top/bottom walls
+        if (e.pos.x < lx || e.pos.x > rx) {
+            if (e.pos.y - r < gT) { e.pos.y = gT + r; e.vel.y = Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+            if (e.pos.y + r > gB) { e.pos.y = gB - r; e.vel.y = -Math.abs(e.vel.y) * res; if (e instanceof Player) e.isTouchingWall = true; }
+        }
+    }
+
+    // ── 3. GOALPOST SQUARES ──────────────────────────────────────────────────────
+    // Half-size of the post square = half the visual line width (wallT = 5*gameScale)
+    const postH = wallT; // 5 * gameScale — sits flush inside the wall
+    posts.forEach(p => {
+        // p.x = arenaX (left) or arenaX+arenaWidth (right), p.y = gT or gB
+        // Centre the post square on the wall line, straddling inside/outside
+        const px = p.x - postH;  // left edge of post rect
+        const py = p.y - postH;  // top edge of post rect
+        const pw = postH * 2, ph = postH * 2;
+        const nearX = Math.max(px, Math.min(e.pos.x, px + pw));
+        const nearY = Math.max(py, Math.min(e.pos.y, py + ph));
+        const dx = e.pos.x - nearX, dy = e.pos.y - nearY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < r && dist > 0) {
+            const nx = dx / dist, ny = dy / dist;
+            e.pos.x = nearX + nx * r;
+            e.pos.y = nearY + ny * r;
+            const dot = e.vel.x * nx + e.vel.y * ny;
+            if (dot < 0) { e.vel.x -= (1 + res) * dot * nx; e.vel.y -= (1 + res) * dot * ny; }
+            if (e instanceof Player) e.isTouchingWall = true;
+        }
+    });
+
+    // ── 4. GOAL SCORING ──────────────────────────────────────────────────────────
+    if (e instanceof Ball && resetDelay <= 0 && countdown <= 0 && (isHost || !currentRoom)) {
+        if (e.pos.x + r < lx && e.pos.y > gT && e.pos.y < gB) scoreGoal('orange');
+        else if (e.pos.x - r > rx && e.pos.y > gT && e.pos.y < gB) scoreGoal('blue');
+    }
+}
+
+function resolveCollision(a, b) {
+    const d = a.pos.dist(b.pos), minDist = a.radius + b.radius;
+    if (d < minDist && d > 0) {
+        if (a instanceof Player && b instanceof Ball) {
+            currentDribbler = a;
+            const angleToBall = Math.atan2(b.pos.y - a.pos.y, b.pos.x - a.pos.x);
+            let backAngle = a.currentAngle + Math.PI;
+            while (backAngle < -Math.PI) backAngle += Math.PI * 2; while (backAngle > Math.PI) backAngle -= Math.PI * 2;
+            if (Math.abs(angleToBall - backAngle) < 0.65) { if (a.boost < 112 || a.jumps === 0) { a.boost = 112; a.jumps = gameState === 'trials' ? 3 : 1; a.pulse = 20; } }
+        }
+        // Player-to-player back touch: give jump (not boost)
+        if (a instanceof Player && b instanceof Player) {
+            const angleAtoB = Math.atan2(b.pos.y - a.pos.y, b.pos.x - a.pos.x);
+            let aBack = a.currentAngle + Math.PI;
+            while (aBack < -Math.PI) aBack += Math.PI * 2; while (aBack > Math.PI) aBack -= Math.PI * 2;
+            if (Math.abs(angleAtoB - aBack) < 0.65 && a.jumps === 0) { a.jumps = gameState === 'trials' ? 3 : 1; a.pulse = 15; }
+            let bBack = b.currentAngle + Math.PI;
+            while (bBack < -Math.PI) bBack += Math.PI * 2; while (bBack > Math.PI) bBack -= Math.PI * 2;
+            const angleBtoA = Math.atan2(a.pos.y - b.pos.y, a.pos.x - b.pos.x);
+            if (Math.abs(angleBtoA - bBack) < 0.65 && b.jumps === 0) { b.jumps = gameState === 'trials' ? 3 : 1; b.pulse = 15; }
+        }
+        const nx = (b.pos.x - a.pos.x) / d, ny = (b.pos.y - a.pos.y) / d;
+        const overlap = minDist - d, totalMass = a.mass + b.mass;
+        // Separate fully to prevent overlap/glitch
+        a.pos.x -= nx * overlap * (b.mass / totalMass);
+        a.pos.y -= ny * overlap * (b.mass / totalMass);
+        b.pos.x += nx * overlap * (a.mass / totalMass);
+        b.pos.y += ny * overlap * (a.mass / totalMass);
+        const rvx = b.vel.x - a.vel.x, rvy = b.vel.y - a.vel.y, dot = rvx * nx + rvy * ny;
+        if (dot < 0) { const imp = (2 * dot) / totalMass; a.vel.x += imp * b.mass * nx * 1.15; a.vel.y += imp * b.mass * ny * 1.15; b.vel.x -= imp * a.mass * nx * 1.15; b.vel.y -= imp * a.mass * ny * 1.15; }
+    }
+}
+
+// ─── Scoring ──────────────────────────────────────────────────────────────────
+function scoreGoal(team) {
+    if (resetDelay > 0 || countdown > 0) return;
+    if (team === 'blue') scoreBlue++; else scoreOrange++;
+    scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
+    shakeTime = 30; flashTime = 25;
+    flashColor = team === 'blue' ? hexToRgba(config.colors.blue, 0.4) : hexToRgba(config.colors.orange, 0.4);
+    goalMsgEl.style.opacity = 1; timeScale = 0.15; resetDelay = 180;
+    dribbleTime = 0; currentDribbler = null; timerContainer.style.display = 'none';
+    if (currentRoom && isHost) socket.emit('goalScored', { roomID: currentRoom, team, ballX: (ball.pos.x - arenaX) / arenaWidth, ballY: (ball.pos.y - arenaY) / arenaHeight });
+    const color = team === 'blue' ? config.colors.blue : config.colors.orange;
+    for (let i = 0; i < 80; i++) { const a = Math.random() * Math.PI * 2, s = (5 + Math.random() * 15) * gameScale; particles.push(new Particle(ball.pos.x, ball.pos.y, color, new Vector2D(Math.cos(a) * s, Math.sin(a) * s), Math.random() > 0.5 ? 'spike' : 'circle')); }
+}
+function startCountdown() { countdown = 180; countdownMsgEl.style.display = 'block'; }
+
+// ─── Leaderboard ──────────────────────────────────────────────────────────────
+async function submitScore(s, cat) { try { await fetch('/api/leaderboard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: playerName || 'Pilot', score: s, category: cat }) }); fetchLeaderboard(); } catch(e) {} }
+async function fetchLeaderboard() { try { const r = await fetch('/api/leaderboard'); globalLeaderboard = await r.json(); if (Array.isArray(globalLeaderboard)) globalLeaderboard = { dribble: globalLeaderboard, trials: [], rise: [] }; if (!globalLeaderboard.rise) globalLeaderboard.rise = []; updateLeaderboardUI(); } catch(e) {} }
+function getGlobalBest() { return (globalLeaderboard.dribble || []).length > 0 ? globalLeaderboard.dribble[0].score : 0; }
+function updateLeaderboardUI(full = false) {
+    const list = document.getElementById(full ? 'full-leaderboard-list' : 'leaderboard-list');
+    const board = (globalLeaderboard[leaderboardType] || []);
+    const unit = (leaderboardType === 'trials' || leaderboardType === 'rise') ? 'm' : 's';
+    list.innerHTML = board.slice(0, full ? 50 : 5).map((e, i) => `<div class="leaderboard-entry"><span>${i+1}. ${e.name}</span><span style="color:#fff">${e.score.toFixed(2)}${unit}</span></div>`).join('') || '<div style="text-align:center;color:#444;padding:20px">No records yet</div>';
+}
+
+// ─── Trials Mode ──────────────────────────────────────────────────────────────
+function startTrials() {
+    gameState = 'trials'; resetPositions();
+    // In trials: single player, accept both WASD and arrows
+    if (player1) {
+        player1.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost,
+            up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
+        player1.jumps = 3;
+    }
+    // Position player at left side, center height
+    player1.pos.x = arenaX + 180 * gameScale;
+    player1.pos.y = arenaY + arenaHeight / 2;
+    trialsHUD.style.display = 'flex';
+    trialsGameover.style.display = 'none';
+    document.getElementById('scoreboard').style.display = 'none';
+    document.getElementById('p1-controls').style.display = 'none';
+    document.getElementById('p2-controls').style.display = 'none';
+    document.getElementById('p1-join').style.display = 'none';
+    document.getElementById('p2-join').style.display = 'none';
+    particles.length = 0; effects.length = 0;
+}
+
+function endTrials() {
+    gameState = 'arena';
+    const metres = Math.floor(trialDistance / 100);
+    trialsHUD.style.display = 'none';
+    document.getElementById('scoreboard').style.display = 'block';
+    // Restore hints if players are joined
+    if (p1Joined) document.getElementById('p1-controls').style.display = 'block';
+    if (p2Joined) document.getElementById('p2-controls').style.display = 'block';
+    // Restore join prompts if needed
+    if (!p1Joined) document.getElementById('p1-join').style.display = 'block';
+    if (!p2Joined && !currentRoom) document.getElementById('p2-join').style.display = 'block';
+    // Game over screen
+    goDistBig.innerText = metres;
+    const best = (globalLeaderboard.trials || []).length > 0 ? globalLeaderboard.trials[0].score : 0;
+    if (metres > best) {
+        goBestLine.innerText = '🏆 NEW RECORD!';
+        goBestLine.style.color = '#FFD700';
+    } else if (best > 0) {
+        goBestLine.innerText = `Best: ${best}m`;
+        goBestLine.style.color = '#555';
+    } else { goBestLine.innerText = ''; }
+    trialsGameover.style.display = 'block';
+    if (metres > 0) submitScore(metres, 'trials');
+    particles.length = 0; effects.length = 0;
+    resetPositions();
+}
+
+// ─── Rise Mode ────────────────────────────────────────────────────────────────
+// Camera model: riseCamY = how many px the world has scrolled upward (increases as player climbs).
+// All world objects use worldY (0 = starting floor level, negative = above floor).
+// Screen Y of a world point: screenY = (arenaY + arenaHeight - wallT) + worldY - riseCamY
+// Player world pos: risePlayerWorldY (0 = on floor). Screen Y = floorScreenY + risePlayerWorldY - riseCamY
+// Ball world pos: riseBallWorld{X,Y}.
+
+function startRise() {
+    gameState = 'rise'; riseActive = true;
+    riseHeight = 0; riseMaxHeight = 0; riseCamY = 0;
+    riseObstacles = []; riseNextObsHeight = 500;
+    riseDeathFloor = 0; // world Y of death floor (0=floor level, goes negative = rises)
+    riseRecordHeight = (globalLeaderboard.rise || []).length > 0 ? globalLeaderboard.rise[0].score : 0;
+
+    const wallT = 5 * gameScale;
+    const floorScreenY = arenaY + arenaHeight - wallT;
+    const midX = arenaX + arenaWidth / 2;
+
+    // Player starts on the floor, center of arena
+    risePlayerWorldX = midX;
+    risePlayerWorldY = -playerRadius; // just above floor
+    risePlayerVelX = 0; risePlayerVelY = 0;
+
+    // Ball starts just in front of player (to the right, on floor)
+    riseBallWorldX = midX + ballRadius * 3;
+    riseBallWorldY = -ballRadius;
+    riseBallVelX = 0; riseBallVelY = 0;
+
+    // Also set player1 object for drawing (handleInput uses it)
+    player1.pos.x = risePlayerWorldX;
+    player1.pos.y = floorScreenY + risePlayerWorldY - riseCamY;
+    player1.vel.x = 0; player1.vel.y = 0;
+    player1.jumps = 1; player1.hasJump = true; player1.boost = 112;
+    player1.currentAngle = -Math.PI / 2; // pointing up
+    player1.controls = {
+        up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right,
+        jump: keybinds.p1jump, boost: keybinds.p1boost,
+        up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight',
+        jump2: 'Period', boost2: 'Comma'
+    };
+
+    document.getElementById('rise-hud').style.display = 'block';
+    document.getElementById('rise-gameover').style.display = 'none';
+    document.getElementById('rise-record-tag').style.display = 'none';
+    document.getElementById('scoreboard').style.display = 'none';
+    document.getElementById('p1-controls').style.display = 'none';
+    document.getElementById('p2-controls').style.display = 'none';
+    document.getElementById('p1-join').style.display = 'none';
+    document.getElementById('p2-join').style.display = 'none';
+    particles.length = 0; effects.length = 0;
+}
+
+function endRise() {
+    gameState = 'arena'; riseActive = false;
+    const metres = Math.floor(-riseMaxHeight / gameScale / 8);
+    document.getElementById('rise-hud').style.display = 'none';
+    document.getElementById('scoreboard').style.display = 'block';
+    if (p1Joined) document.getElementById('p1-controls').style.display = 'block';
+    if (!p1Joined) document.getElementById('p1-join').style.display = 'block';
+    if (!p2Joined && !currentRoom) document.getElementById('p2-join').style.display = 'block';
+
+    document.getElementById('rise-go-height').innerText = metres;
+    const best = (globalLeaderboard.rise || []).length > 0 ? globalLeaderboard.rise[0].score : 0;
+    const bestEl = document.getElementById('rise-go-best');
+    if (metres > best) { bestEl.innerText = '🏆 NEW RECORD!'; bestEl.style.color = '#FFD700'; }
+    else if (best > 0) { bestEl.innerText = `Best: ${best}m`; bestEl.style.color = '#555'; }
+    else { bestEl.innerText = ''; }
+    document.getElementById('rise-gameover').style.display = 'block';
+    if (metres > 0) submitScore(metres, 'rise');
+    particles.length = 0; effects.length = 0;
+    resetPositions();
+}
+
+function updateRise(ts) {
+    const wallT = 5 * gameScale;
+    const lx = arenaX + wallT;             // left wall world X
+    const rx = arenaX + arenaWidth - wallT; // right wall world X
+    const floorWorldY = -playerRadius;      // floor surface in world Y (player rests here)
+    const floorScreenY = arenaY + arenaHeight - wallT;
+    const res = 0.55;
+    const cr = Math.min(config.cornerRadius * gameScale, arenaWidth * 0.18);
+
+    // ── Player input via player1 object (reuse existing input system) ──
+    player1.boost = 112;
+    player1.pos.x = risePlayerWorldX;
+    player1.pos.y = floorScreenY + risePlayerWorldY - riseCamY;
+    player1.vel.x = risePlayerVelX;
+    player1.vel.y = risePlayerVelY;
+    player1.isTouchingWall = false; player1.isTouchingGround = false;
+    player1.handleInput(ts); // modifies player1.acc, player1.vel via applyForce
+    // Apply gravity + acc manually
+    player1.acc.y += config.gravity * player1.mass * gameScale * RISE_GRAVITY_SCALE;
+    risePlayerVelX = player1.vel.x + player1.acc.x * ts;
+    risePlayerVelY = player1.vel.y + player1.acc.y * ts;
+    risePlayerVelX *= Math.pow(config.friction, ts);
+    risePlayerVelY *= Math.pow(config.friction, ts);
+    player1.acc.mult(0);
+
+    // Integrate player world position
+    risePlayerWorldX += risePlayerVelX * ts;
+    risePlayerWorldY += risePlayerVelY * ts;
+
+    player1.isTouchingWall = false; player1.isTouchingGround = false;
+    const pr = playerRadius;
+
+    // ── Rounded bottom corners (concave arcs) ──
+    const cornerFloorY = floorWorldY; // world Y of physical floor top surface = -playerRadius... 
+    // Actually floor top in world = 0 (surface), player center rests at -playerRadius.
+    // Corner centers in world: (lx+cr, -cr) for bottom-left, (rx-cr, -cr) for bottom-right
+    const cornerWorldY = -cr; // world Y of corner center
+    // Bottom-left corner
+    if (risePlayerWorldX < lx + cr && risePlayerWorldY > cornerWorldY) {
+        const cdx = risePlayerWorldX - (lx + cr);
+        const cdy = risePlayerWorldY - cornerWorldY;
+        const cd = Math.sqrt(cdx*cdx + cdy*cdy);
+        if (cd < cr - pr && cd > 0) { // inside arc wall → push outward
+            const nx = cdx/cd, ny = cdy/cd;
+            risePlayerWorldX = (lx + cr) + nx * (cr - pr);
+            risePlayerWorldY = cornerWorldY + ny * (cr - pr);
+            const dot = risePlayerVelX*nx + risePlayerVelY*ny;
+            if (dot < 0) { risePlayerVelX -= (1+res)*dot*nx; risePlayerVelY -= (1+res)*dot*ny; }
+            player1.isTouchingWall = true;
+            if (ny > 0.3) { player1.isTouchingGround = true; player1.jumps = 1; player1.hasJump = true; }
+        }
+    }
+    // Bottom-right corner
+    if (risePlayerWorldX > rx - cr && risePlayerWorldY > cornerWorldY) {
+        const cdx = risePlayerWorldX - (rx - cr);
+        const cdy = risePlayerWorldY - cornerWorldY;
+        const cd = Math.sqrt(cdx*cdx + cdy*cdy);
+        if (cd < cr - pr && cd > 0) {
+            const nx = cdx/cd, ny = cdy/cd;
+            risePlayerWorldX = (rx - cr) + nx * (cr - pr);
+            risePlayerWorldY = cornerWorldY + ny * (cr - pr);
+            const dot = risePlayerVelX*nx + risePlayerVelY*ny;
+            if (dot < 0) { risePlayerVelX -= (1+res)*dot*nx; risePlayerVelY -= (1+res)*dot*ny; }
+            player1.isTouchingWall = true;
+            if (ny > 0.3) { player1.isTouchingGround = true; player1.jumps = 1; player1.hasJump = true; }
+        }
+    }
+    // Left wall
+    if (risePlayerWorldX - pr < lx) {
+        risePlayerWorldX = lx + pr; risePlayerVelX = Math.abs(risePlayerVelX) * res;
+        player1.isTouchingWall = true; player1.jumps = 1; player1.hasJump = true;
+    }
+    // Right wall
+    if (risePlayerWorldX + pr > rx) {
+        risePlayerWorldX = rx - pr; risePlayerVelX = -Math.abs(risePlayerVelX) * res;
+        player1.isTouchingWall = true; player1.jumps = 1; player1.hasJump = true;
+    }
+    // Floor
+    if (risePlayerWorldY > -pr) {
+        risePlayerWorldY = -pr; risePlayerVelY = -Math.abs(risePlayerVelY) * res;
+        player1.isTouchingGround = true; player1.isTouchingWall = true;
+        player1.jumps = 1; player1.hasJump = true;
+    }
+
+    // ── Ball physics (world space) ──
+    const br = ballRadius;
+    riseBallVelY += config.gravity * 0.35 * gameScale * ts; // ball gravity
+    riseBallVelX *= Math.pow(config.friction, ts);
+    riseBallVelY *= Math.pow(config.friction, ts);
+    riseBallWorldX += riseBallVelX * ts;
+    riseBallWorldY += riseBallVelY * ts;
+
+    // Ball wall collisions (world space)
+    if (riseBallWorldX - br < lx) { riseBallWorldX = lx + br; riseBallVelX = Math.abs(riseBallVelX) * 0.8; }
+    if (riseBallWorldX + br > rx) { riseBallWorldX = rx - br; riseBallVelX = -Math.abs(riseBallVelX) * 0.8; }
+    if (riseBallWorldY > -br) { riseBallWorldY = -br; riseBallVelY = -Math.abs(riseBallVelY) * 0.75; }
+
+    // ── Player–Ball collision (world space) ──
+    const pbDx = riseBallWorldX - risePlayerWorldX;
+    const pbDy = riseBallWorldY - risePlayerWorldY;
+    const pbDist = Math.sqrt(pbDx*pbDx + pbDy*pbDy);
+    const minDist = pr + br;
+    if (pbDist < minDist && pbDist > 0) {
+        const nx = pbDx/pbDist, ny = pbDy/pbDist;
+        const overlap = minDist - pbDist;
+        // Separate
+        risePlayerWorldX -= nx * overlap * 0.35;
+        risePlayerWorldY -= ny * overlap * 0.35;
+        riseBallWorldX   += nx * overlap * 0.65;
+        riseBallWorldY   += ny * overlap * 0.65;
+        // Impulse
+        const rvx = riseBallVelX - risePlayerVelX, rvy = riseBallVelY - risePlayerVelY;
+        const dot = rvx*nx + rvy*ny;
+        if (dot < 0) {
+            const imp = dot * 1.15;
+            risePlayerVelX += imp * 0.35 * nx; risePlayerVelY += imp * 0.35 * ny;
+            riseBallVelX   -= imp * 0.65 * nx; riseBallVelY   -= imp * 0.65 * ny;
+        }
+        // Flip reset: if player back arc hits ball
+        const backAngle = player1.currentAngle + Math.PI;
+        const angleToBall = Math.atan2(ny, nx);
+        if (Math.abs(angleToBall - backAngle) < 0.65 || Math.abs(angleToBall - backAngle - Math.PI*2) < 0.65) {
+            player1.jumps = 1; player1.hasJump = true; player1.pulse = 20;
+        }
+        currentDribbler = player1;
+    }
+
+    // ── Camera: smoothly track player upward, never come back down ──
+    const targetCamY = Math.max(riseCamY, -(risePlayerWorldY) - arenaHeight * 0.4);
+    riseCamY += (targetCamY - riseCamY) * 0.06 * ts;
+
+    // ── Track max height ──
+    const heightNow = -risePlayerWorldY; // positive = above floor
+    if (heightNow > riseMaxHeight) riseMaxHeight = heightNow;
+
+    // ── Death floor (world space) ──
+    const deathSpeed = 0.4 + riseMaxHeight / (arenaHeight * 6);
+    riseDeathFloor -= deathSpeed * ts; // moves up (more negative)
+    // Death: player falls below death floor
+    if (risePlayerWorldY > riseDeathFloor + pr) { endRise(); return; }
+
+    // ── Ball falls off death floor → reset ball near player ──
+    if (riseBallWorldY > riseDeathFloor + br) {
+        riseBallWorldX = risePlayerWorldX + ballRadius * 2;
+        riseBallWorldY = risePlayerWorldY - ballRadius * 2;
+        riseBallVelX = 0; riseBallVelY = 0;
+    }
+
+    // ── Spawn obstacles ──
+    const heightM = Math.floor(riseMaxHeight / gameScale / 8);
+    const nextSpawnHeight = riseNextObsHeight;
+    if (heightM > nextSpawnHeight) {
+        const difficulty = Math.min(1, riseMaxHeight / (arenaHeight * 4));
+        const types = difficulty < 0.25 ? ['platform','platform'] :
+                      difficulty < 0.55 ? ['platform','spike-wall','moving-block'] :
+                                          ['spike-wall','moving-block','spike-wall'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        // Place in world coords: above current player position
+        const spawnAbove = risePlayerWorldY - arenaHeight * (0.5 + Math.random() * 0.4);
+        riseObstacles.push(new RiseObstacle(spawnAbove, type, difficulty));
+        riseNextObsHeight += 15 + Math.random() * 25;
+    }
+
+    // ── Update & collide obstacles ──
+    for (let i = riseObstacles.length - 1; i >= 0; i--) {
+        const o = riseObstacles[i];
+        o.update();
+        if (o.checkPlayerCollision(risePlayerWorldX, risePlayerWorldY, pr)) { endRise(); return; }
+        // Remove obstacles far below death floor
+        if (o.worldY > riseDeathFloor + arenaHeight) riseObstacles.splice(i, 1);
+    }
+
+    // ── Sync player1 screen pos for draw ──
+    player1.pos.x = risePlayerWorldX;
+    player1.pos.y = floorScreenY + risePlayerWorldY - riseCamY;
+    player1.vel.x = risePlayerVelX;
+    player1.vel.y = risePlayerVelY;
+
+    // ── HUD ──
+    const metres = Math.floor(riseMaxHeight / gameScale / 8);
+    document.getElementById('rise-height').innerText = metres + 'm';
+    const recEl = document.getElementById('rise-record-tag');
+    recEl.style.display = (metres > riseRecordHeight && metres > 0) ? 'block' : 'none';
+
+    // Update particles (rise exits early from main update loop)
+    particles.forEach(p => p.update(ts));
+    for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
+    for (let i = effects.length - 1; i >= 0; i--) if (effects[i].life <= 0) effects.splice(i, 1);
+}
+
+function drawRise() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+
+    const wallT = 5 * gameScale;
+    const lx = arenaX + wallT, rx = arenaX + arenaWidth - wallT;
+    const floorScreenY = arenaY + arenaHeight - wallT;
+    const cr = Math.min(config.cornerRadius * gameScale, arenaWidth * 0.18);
+
+    // Helper: world Y → screen Y
+    function wToS(worldY) { return floorScreenY + worldY - riseCamY; }
+
+    // Clip to arena
+    ctx.beginPath();
+    ctx.rect(arenaX - 20, arenaY - 20, arenaWidth + 40, arenaHeight + 40);
+    ctx.clip();
+
+    // Scrolling grid background (tinted red)
+    const gridS = 100 * gameScale;
+    const gridOff = riseCamY % gridS;
+    ctx.strokeStyle = 'rgba(255,80,80,0.04)'; ctx.lineWidth = 1;
+    for (let x = arenaX; x <= rx; x += gridS) { ctx.beginPath(); ctx.moveTo(x, arenaY); ctx.lineTo(x, arenaY + arenaHeight); ctx.stroke(); }
+    for (let y = arenaY - gridOff; y < arenaY + arenaHeight + gridS; y += gridS) { ctx.beginPath(); ctx.moveTo(arenaX, y); ctx.lineTo(rx, y); ctx.stroke(); }
+
+    // ── Arena walls with rounded bottom corners — NO TOP WALL ──
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 10 * gameScale; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lx, arenaY - 60 * gameScale);             // left wall goes up past screen
+    ctx.lineTo(lx, wToS(-cr));                            // down to corner start
+    ctx.arcTo(lx, wToS(0), lx + cr, wToS(0), cr);        // bottom-left rounded corner
+    ctx.lineTo(rx - cr, wToS(0));                         // bottom floor
+    ctx.arcTo(rx, wToS(0), rx, wToS(-cr), cr);            // bottom-right rounded corner
+    ctx.lineTo(rx, arenaY - 60 * gameScale);              // right wall goes up past screen
+    ctx.stroke();
+
+    // ── Death floor (glowing red) ──
+    const deathScreenY = wToS(riseDeathFloor);
+    if (deathScreenY < arenaY + arenaHeight + 10) {
+        ctx.save();
+        const dfAlpha = Math.min(1, (floorScreenY - deathScreenY + 80 * gameScale) / (300 * gameScale));
+        const grad = ctx.createLinearGradient(0, deathScreenY, 0, deathScreenY + 100 * gameScale);
+        grad.addColorStop(0, `rgba(255,40,40,${Math.min(0.55, dfAlpha)})`);
+        grad.addColorStop(1, 'rgba(255,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(arenaX, deathScreenY, arenaWidth, 100 * gameScale);
+        ctx.strokeStyle = `rgba(255,70,70,${dfAlpha})`; ctx.lineWidth = 3 * gameScale;
+        ctx.shadowBlur = 20 * gameScale; ctx.shadowColor = '#ff2222';
+        ctx.beginPath(); ctx.moveTo(arenaX, deathScreenY); ctx.lineTo(rx, deathScreenY); ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+    }
+
+    // ── Personal record line ──
+    if (riseRecordHeight > 0) {
+        const recWorldY = -(riseRecordHeight * gameScale * 8);
+        const recScreenY = wToS(recWorldY);
+        if (recScreenY > arenaY - 10 && recScreenY < arenaY + arenaHeight) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255,215,0,0.7)'; ctx.lineWidth = 2 * gameScale;
+            ctx.setLineDash([8 * gameScale, 5 * gameScale]);
+            ctx.beginPath(); ctx.moveTo(lx + 4, recScreenY); ctx.lineTo(rx - 4, recScreenY); ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = 'rgba(255,215,0,0.9)'; ctx.font = `bold ${10 * gameScale}px Arial`;
+            ctx.fillText('🏆 PR: ' + riseRecordHeight + 'm', lx + 8, recScreenY - 5 * gameScale);
+            ctx.restore();
+        }
+    }
+
+    // ── Live height marker on left wall (when breaking PR) ──
+    const curMetres = Math.floor(riseMaxHeight / gameScale / 8);
+    if (curMetres > riseRecordHeight && curMetres > 0) {
+        ctx.save();
+        ctx.fillStyle = '#FFD700'; ctx.font = `bold ${11 * gameScale}px Arial`;
+        ctx.fillText('▶ ' + curMetres + 'm', lx + 10, player1.pos.y - 15 * gameScale);
+        ctx.restore();
+    }
+
+    // ── Draw obstacles ──
+    riseObstacles.forEach(o => o.drawRise(wToS));
+
+    // ── Draw ball ──
+    const bsx = riseBallWorldX;
+    const bsy = wToS(riseBallWorldY);
+    ctx.beginPath(); ctx.arc(bsx, bsy, ballRadius, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff'; ctx.shadowBlur = 15 * gameScale; ctx.shadowColor = 'rgba(255,255,255,0.5)'; ctx.fill(); ctx.shadowBlur = 0;
+    // seams
+    ctx.beginPath(); ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 2 * gameScale;
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2; ctx.moveTo(bsx + Math.cos(a)*ballRadius*0.4, bsy + Math.sin(a)*ballRadius*0.4); ctx.lineTo(bsx + Math.cos(a)*ballRadius, bsy + Math.sin(a)*ballRadius); }
+    ctx.stroke();
+
+    // ── Draw player ──
+    player1.draw();
+
+    // ── Particles & effects ──
+    particles.forEach(p => p.draw());
+    effects.forEach(e => e.draw());
+
+    // ── Boost bars ──
+    const gW = 12 * gameScale, ghBar = 180 * gameScale;
+    ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(40*gameScale, canvas.height - 220*gameScale, gW, ghBar);
+    ctx.fillStyle = config.colors.blue; ctx.fillRect(40*gameScale, canvas.height - 40*gameScale - player1.boost*1.6*gameScale, gW, player1.boost*1.6*gameScale);
+
+    ctx.restore();
+}
+
 
 // ─── Multiplayer State ────────────────────────────────────────────────────────
 let currentRoom = null, isHost = false, clientGoalVisible = false, clientShowGo = false;
@@ -622,17 +1671,17 @@ class RiseObstacle {
             this.x = arenaX + (30 + Math.random() * (arenaWidth - 60) * gameScale - this.w / 2);
             this.x = Math.max(arenaX + 20 * gameScale, Math.min(arenaX + arenaWidth - this.w - 20 * gameScale, this.x));
         } else if (type === 'spike-wall') {
-            // Horizontal spike bar across partial width — gap player must fly through
-            const gapW = (240 - d * 80) * gameScale;
-            this.gapX = arenaX + 10 * gameScale + Math.random() * (arenaWidth - gapW - 20 * gameScale);
+            // Horizontal spike bar across partial width
+            const gapW = (220 - d * 80) * gameScale;
+            this.gapX = arenaX + (Math.random() * (arenaWidth * gameScale - gapW));
             this.gapX = Math.max(arenaX + 10 * gameScale, Math.min(arenaX + arenaWidth - gapW - 10 * gameScale, this.gapX));
             this.gapW = gapW;
-            this.h = 22 * gameScale;
+            this.h = 20 * gameScale;
         } else if (type === 'moving-block') {
             this.w = (60 + Math.random() * 40) * gameScale;
             this.h = 25 * gameScale;
-            this.moveRange = Math.min((120 + Math.random() * 100) * gameScale, arenaWidth * 0.3);
-            this.baseX = arenaX + arenaWidth * (0.25 + Math.random() * 0.5);
+            this.moveRange = (100 + Math.random() * 120) * gameScale;
+            this.baseX = arenaX + arenaWidth / 2;
             this.phase = Math.random() * Math.PI * 2;
             this.moveSpd = 0.03 + d * 0.03;
         }
@@ -975,25 +2024,45 @@ function endTrials() {
 }
 
 // ─── Rise Mode ────────────────────────────────────────────────────────────────
+// Camera model: riseCamY = how many px the world has scrolled upward (increases as player climbs).
+// All world objects use worldY (0 = starting floor level, negative = above floor).
+// Screen Y of a world point: screenY = (arenaY + arenaHeight - wallT) + worldY - riseCamY
+// Player world pos: risePlayerWorldY (0 = on floor). Screen Y = floorScreenY + risePlayerWorldY - riseCamY
+// Ball world pos: riseBallWorld{X,Y}.
+
 function startRise() {
     gameState = 'rise'; riseActive = true;
-    resetPositions();
     riseHeight = 0; riseMaxHeight = 0; riseCamY = 0;
     riseObstacles = []; riseNextObsHeight = 500;
-    riseDeathFloorY = -arenaHeight * 0.5; // floor starts well BELOW the arena — gives player time to get moving
+    riseDeathFloor = 0; // world Y of death floor (0=floor level, goes negative = rises)
     riseRecordHeight = (globalLeaderboard.rise || []).length > 0 ? globalLeaderboard.rise[0].score : 0;
 
-    // Position player at bottom center
     const wallT = 5 * gameScale;
-    player1.pos.x = arenaX + arenaWidth / 2;
-    player1.pos.y = arenaY + arenaHeight - wallT - playerRadius;
+    const floorScreenY = arenaY + arenaHeight - wallT;
+    const midX = arenaX + arenaWidth / 2;
+
+    // Player starts on the floor, center of arena
+    risePlayerWorldX = midX;
+    risePlayerWorldY = -playerRadius; // just above floor
+    risePlayerVelX = 0; risePlayerVelY = 0;
+
+    // Ball starts just in front of player (to the right, on floor)
+    riseBallWorldX = midX + ballRadius * 3;
+    riseBallWorldY = -ballRadius;
+    riseBallVelX = 0; riseBallVelY = 0;
+
+    // Also set player1 object for drawing (handleInput uses it)
+    player1.pos.x = risePlayerWorldX;
+    player1.pos.y = floorScreenY + risePlayerWorldY - riseCamY;
     player1.vel.x = 0; player1.vel.y = 0;
     player1.jumps = 1; player1.hasJump = true; player1.boost = 112;
-
-    if (player1) {
-        player1.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost,
-            up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
-    }
+    player1.currentAngle = -Math.PI / 2; // pointing up
+    player1.controls = {
+        up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right,
+        jump: keybinds.p1jump, boost: keybinds.p1boost,
+        up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight',
+        jump2: 'Period', boost2: 'Comma'
+    };
 
     document.getElementById('rise-hud').style.display = 'block';
     document.getElementById('rise-gameover').style.display = 'none';
@@ -1008,7 +2077,7 @@ function startRise() {
 
 function endRise() {
     gameState = 'arena'; riseActive = false;
-    const metres = Math.floor(riseMaxHeight / 60);
+    const metres = Math.floor(-riseMaxHeight / gameScale / 8);
     document.getElementById('rise-hud').style.display = 'none';
     document.getElementById('scoreboard').style.display = 'block';
     if (p1Joined) document.getElementById('p1-controls').style.display = 'block';
@@ -1029,237 +2098,203 @@ function endRise() {
 
 function updateRise(ts) {
     const wallT = 5 * gameScale;
-
-    // Infinite boost
-    player1.boost = 112;
-    player1.handleInput(ts);
-
-    // Physics: left/right walls, rounded bottom corners, bottom floor. No top wall.
-    const lx = arenaX + wallT, rx = arenaX + arenaWidth - wallT;
-    const screenFloorY = arenaY + arenaHeight - wallT;
-    const r = player1.radius;
+    const lx = arenaX + wallT;             // left wall world X
+    const rx = arenaX + arenaWidth - wallT; // right wall world X
+    const floorWorldY = -playerRadius;      // floor surface in world Y (player rests here)
+    const floorScreenY = arenaY + arenaHeight - wallT;
     const res = 0.55;
-    // Corner radius for the rounded bottom corners — use a fixed comfortable value
     const cr = Math.min(config.cornerRadius * gameScale, arenaWidth * 0.18);
 
-    // Apply gravity manually (replaces Entity.update gravity step)
-    player1.applyForce(new Vector2D(0, config.gravity * player1.mass * gameScale * RISE_GRAVITY_SCALE));
-    player1.vel.x += player1.acc.x * ts;
-    player1.vel.y += player1.acc.y * ts;
-    player1.vel.mult(Math.pow(config.friction, ts));
-    player1.pos.x += player1.vel.x * ts;
-    player1.pos.y += player1.vel.y * ts;
-    player1.acc.mult(0);
+    // ── Player input via player1 object (reuse existing input system) ──
+    player1.boost = 112;
+    player1.pos.x = risePlayerWorldX;
+    player1.pos.y = floorScreenY + risePlayerWorldY - riseCamY;
+    player1.vel.x = risePlayerVelX;
+    player1.vel.y = risePlayerVelY;
     player1.isTouchingWall = false; player1.isTouchingGround = false;
+    player1.handleInput(ts); // modifies player1.acc, player1.vel via applyForce
+    // Apply gravity + acc manually
+    player1.acc.y += config.gravity * player1.mass * gameScale * RISE_GRAVITY_SCALE;
+    risePlayerVelX = player1.vel.x + player1.acc.x * ts;
+    risePlayerVelY = player1.vel.y + player1.acc.y * ts;
+    risePlayerVelX *= Math.pow(config.friction, ts);
+    risePlayerVelY *= Math.pow(config.friction, ts);
+    player1.acc.mult(0);
 
-    // Rounded bottom-left corner: center at (lx+cr, screenFloorY-cr)
-    // This is a CONCAVE corner — player must stay OUTSIDE the arc (d >= cr - r)
-    {
-        const cx = lx + cr, cy = screenFloorY - cr;
-        const dx = player1.pos.x - cx, dy = player1.pos.y - cy;
-        const d = Math.sqrt(dx*dx + dy*dy);
-        // Player is in the corner quadrant (bottom-left of center)
-        if (player1.pos.x < cx && player1.pos.y > cy && d < cr + r && d > 0) {
-            // Push outward from corner center so player slides along the arc
-            const nx = dx/d, ny = dy/d;
-            player1.pos.x = cx + nx * (cr - r);
-            player1.pos.y = cy + ny * (cr - r);
-            const dot = player1.vel.x * nx + player1.vel.y * ny;
-            if (dot < 0) { player1.vel.x -= (1 + res) * dot * nx; player1.vel.y -= (1 + res) * dot * ny; }
+    // Integrate player world position
+    risePlayerWorldX += risePlayerVelX * ts;
+    risePlayerWorldY += risePlayerVelY * ts;
+
+    player1.isTouchingWall = false; player1.isTouchingGround = false;
+    const pr = playerRadius;
+
+    // ── Rounded bottom corners (concave arcs) ──
+    const cornerFloorY = floorWorldY; // world Y of physical floor top surface = -playerRadius... 
+    // Actually floor top in world = 0 (surface), player center rests at -playerRadius.
+    // Corner centers in world: (lx+cr, -cr) for bottom-left, (rx-cr, -cr) for bottom-right
+    const cornerWorldY = -cr; // world Y of corner center
+    // Bottom-left corner
+    if (risePlayerWorldX < lx + cr && risePlayerWorldY > cornerWorldY) {
+        const cdx = risePlayerWorldX - (lx + cr);
+        const cdy = risePlayerWorldY - cornerWorldY;
+        const cd = Math.sqrt(cdx*cdx + cdy*cdy);
+        if (cd < cr - pr && cd > 0) { // inside arc wall → push outward
+            const nx = cdx/cd, ny = cdy/cd;
+            risePlayerWorldX = (lx + cr) + nx * (cr - pr);
+            risePlayerWorldY = cornerWorldY + ny * (cr - pr);
+            const dot = risePlayerVelX*nx + risePlayerVelY*ny;
+            if (dot < 0) { risePlayerVelX -= (1+res)*dot*nx; risePlayerVelY -= (1+res)*dot*ny; }
             player1.isTouchingWall = true;
             if (ny > 0.3) { player1.isTouchingGround = true; player1.jumps = 1; player1.hasJump = true; }
         }
     }
-    // Rounded bottom-right corner: center at (rx-cr, screenFloorY-cr)
-    {
-        const cx = rx - cr, cy = screenFloorY - cr;
-        const dx = player1.pos.x - cx, dy = player1.pos.y - cy;
-        const d = Math.sqrt(dx*dx + dy*dy);
-        if (player1.pos.x > cx && player1.pos.y > cy && d < cr + r && d > 0) {
-            const nx = dx/d, ny = dy/d;
-            player1.pos.x = cx + nx * (cr - r);
-            player1.pos.y = cy + ny * (cr - r);
-            const dot = player1.vel.x * nx + player1.vel.y * ny;
-            if (dot < 0) { player1.vel.x -= (1 + res) * dot * nx; player1.vel.y -= (1 + res) * dot * ny; }
+    // Bottom-right corner
+    if (risePlayerWorldX > rx - cr && risePlayerWorldY > cornerWorldY) {
+        const cdx = risePlayerWorldX - (rx - cr);
+        const cdy = risePlayerWorldY - cornerWorldY;
+        const cd = Math.sqrt(cdx*cdx + cdy*cdy);
+        if (cd < cr - pr && cd > 0) {
+            const nx = cdx/cd, ny = cdy/cd;
+            risePlayerWorldX = (rx - cr) + nx * (cr - pr);
+            risePlayerWorldY = cornerWorldY + ny * (cr - pr);
+            const dot = risePlayerVelX*nx + risePlayerVelY*ny;
+            if (dot < 0) { risePlayerVelX -= (1+res)*dot*nx; risePlayerVelY -= (1+res)*dot*ny; }
             player1.isTouchingWall = true;
             if (ny > 0.3) { player1.isTouchingGround = true; player1.jumps = 1; player1.hasJump = true; }
         }
     }
-
-    // Left/right flat walls (above corner zone)
-    if (player1.pos.x - r < lx) {
-        player1.pos.x = lx + r;
-        player1.vel.x = Math.abs(player1.vel.x) * res;
+    // Left wall
+    if (risePlayerWorldX - pr < lx) {
+        risePlayerWorldX = lx + pr; risePlayerVelX = Math.abs(risePlayerVelX) * res;
         player1.isTouchingWall = true; player1.jumps = 1; player1.hasJump = true;
     }
-    if (player1.pos.x + r > rx) {
-        player1.pos.x = rx - r;
-        player1.vel.x = -Math.abs(player1.vel.x) * res;
+    // Right wall
+    if (risePlayerWorldX + pr > rx) {
+        risePlayerWorldX = rx - pr; risePlayerVelX = -Math.abs(risePlayerVelX) * res;
         player1.isTouchingWall = true; player1.jumps = 1; player1.hasJump = true;
     }
-
-    // Bottom floor
-    if (player1.pos.y + r > screenFloorY) {
-        player1.pos.y = screenFloorY - r;
-        player1.vel.y = -Math.abs(player1.vel.y) * res;
+    // Floor
+    if (risePlayerWorldY > -pr) {
+        risePlayerWorldY = -pr; risePlayerVelY = -Math.abs(risePlayerVelY) * res;
         player1.isTouchingGround = true; player1.isTouchingWall = true;
         player1.jumps = 1; player1.hasJump = true;
     }
 
-    // Track height (in world units): how high above starting floor
-    const startFloorScreen = arenaY + arenaHeight - wallT - playerRadius;
-    const currentHeightPixels = startFloorScreen - player1.pos.y + riseCamY;
-    if (currentHeightPixels > riseMaxHeight) riseMaxHeight = currentHeightPixels;
-    riseHeight = Math.max(0, startFloorScreen - player1.pos.y + riseCamY);
+    // ── Ball physics (world space) ──
+    const br = ballRadius;
+    riseBallVelY += config.gravity * 0.35 * gameScale * ts; // ball gravity
+    riseBallVelX *= Math.pow(config.friction, ts);
+    riseBallVelY *= Math.pow(config.friction, ts);
+    riseBallWorldX += riseBallVelX * ts;
+    riseBallWorldY += riseBallVelY * ts;
 
-    // Smooth camera: follow player upward, never go back down
-    const targetCamY = Math.max(riseCamY, -(player1.pos.y - arenaY - arenaHeight * 0.45));
-    riseCamY += (targetCamY - riseCamY) * 0.08 * ts;
+    // Ball wall collisions (world space)
+    if (riseBallWorldX - br < lx) { riseBallWorldX = lx + br; riseBallVelX = Math.abs(riseBallVelX) * 0.8; }
+    if (riseBallWorldX + br > rx) { riseBallWorldX = rx - br; riseBallVelX = -Math.abs(riseBallVelX) * 0.8; }
+    if (riseBallWorldY > -br) { riseBallWorldY = -br; riseBallVelY = -Math.abs(riseBallVelY) * 0.75; }
 
-    // Death floor: moves up with camera, lags behind slightly
-    // In screen space: death floor is at arenaY + arenaHeight - riseDeathFloorY + riseCamY
-    // It accelerates as you go higher
-    const deathSpeed = 0.3 + riseMaxHeight / (arenaHeight * 8);
-    riseDeathFloorY += deathSpeed * ts;
-
-    // Death floor screen Y
-    const deathFloorScreenY = arenaY + arenaHeight - riseDeathFloorY + riseCamY;
-
-    // Kill if player falls below death floor
-    if (player1.pos.y + r > deathFloorScreenY) {
-        endRise(); return;
+    // ── Player–Ball collision (world space) ──
+    const pbDx = riseBallWorldX - risePlayerWorldX;
+    const pbDy = riseBallWorldY - risePlayerWorldY;
+    const pbDist = Math.sqrt(pbDx*pbDx + pbDy*pbDy);
+    const minDist = pr + br;
+    if (pbDist < minDist && pbDist > 0) {
+        const nx = pbDx/pbDist, ny = pbDy/pbDist;
+        const overlap = minDist - pbDist;
+        // Separate
+        risePlayerWorldX -= nx * overlap * 0.35;
+        risePlayerWorldY -= ny * overlap * 0.35;
+        riseBallWorldX   += nx * overlap * 0.65;
+        riseBallWorldY   += ny * overlap * 0.65;
+        // Impulse
+        const rvx = riseBallVelX - risePlayerVelX, rvy = riseBallVelY - risePlayerVelY;
+        const dot = rvx*nx + rvy*ny;
+        if (dot < 0) {
+            const imp = dot * 1.15;
+            risePlayerVelX += imp * 0.35 * nx; risePlayerVelY += imp * 0.35 * ny;
+            riseBallVelX   -= imp * 0.65 * nx; riseBallVelY   -= imp * 0.65 * ny;
+        }
+        // Flip reset: if player back arc hits ball
+        const backAngle = player1.currentAngle + Math.PI;
+        const angleToBall = Math.atan2(ny, nx);
+        if (Math.abs(angleToBall - backAngle) < 0.65 || Math.abs(angleToBall - backAngle - Math.PI*2) < 0.65) {
+            player1.jumps = 1; player1.hasJump = true; player1.pulse = 20;
+        }
+        currentDribbler = player1;
     }
 
-    // Spawn obstacles
-    if (riseHeight > riseNextObsHeight - arenaHeight * 0.3) {
-        const difficulty = Math.min(1, riseMaxHeight / (arenaHeight * 5));
-        const types = difficulty < 0.3 ? ['platform','platform','spike-wall'] :
-                      difficulty < 0.6 ? ['platform','spike-wall','moving-block'] :
-                                         ['spike-wall','moving-block','moving-block','spike-wall'];
+    // ── Camera: smoothly track player upward, never come back down ──
+    const targetCamY = Math.max(riseCamY, -(risePlayerWorldY) - arenaHeight * 0.4);
+    riseCamY += (targetCamY - riseCamY) * 0.06 * ts;
+
+    // ── Track max height ──
+    const heightNow = -risePlayerWorldY; // positive = above floor
+    if (heightNow > riseMaxHeight) riseMaxHeight = heightNow;
+
+    // ── Death floor (world space) ──
+    const deathSpeed = 0.4 + riseMaxHeight / (arenaHeight * 6);
+    riseDeathFloor -= deathSpeed * ts; // moves up (more negative)
+    // Death: player falls below death floor
+    if (risePlayerWorldY > riseDeathFloor + pr) { endRise(); return; }
+
+    // ── Ball falls off death floor → reset ball near player ──
+    if (riseBallWorldY > riseDeathFloor + br) {
+        riseBallWorldX = risePlayerWorldX + ballRadius * 2;
+        riseBallWorldY = risePlayerWorldY - ballRadius * 2;
+        riseBallVelX = 0; riseBallVelY = 0;
+    }
+
+    // ── Spawn obstacles ──
+    const heightM = Math.floor(riseMaxHeight / gameScale / 8);
+    const nextSpawnHeight = riseNextObsHeight;
+    if (heightM > nextSpawnHeight) {
+        const difficulty = Math.min(1, riseMaxHeight / (arenaHeight * 4));
+        const types = difficulty < 0.25 ? ['platform','platform'] :
+                      difficulty < 0.55 ? ['platform','spike-wall','moving-block'] :
+                                          ['spike-wall','moving-block','spike-wall'];
         const type = types[Math.floor(Math.random() * types.length)];
-        // Place obstacle above current view
-        // Place obstacle above the current view (getScreenY = worldY - camY + arenaY + arenaHeight)
-        // To get screen Y = arenaY + (0.05..0.4)*arenaHeight: worldY = camY - (0.6..0.95)*arenaHeight
-        const obsWorldY = riseCamY - arenaHeight * (0.6 + Math.random() * 0.3);
-        riseObstacles.push(new RiseObstacle(obsWorldY, type, difficulty));
-        riseNextObsHeight += 300 + Math.random() * 400;
+        // Place in world coords: above current player position
+        const spawnAbove = risePlayerWorldY - arenaHeight * (0.5 + Math.random() * 0.4);
+        riseObstacles.push(new RiseObstacle(spawnAbove, type, difficulty));
+        riseNextObsHeight += 15 + Math.random() * 25;
     }
 
-    // Update and check obstacles
+    // ── Update & collide obstacles ──
     for (let i = riseObstacles.length - 1; i >= 0; i--) {
         const o = riseObstacles[i];
         o.update();
-        const hit = o.checkCollision(player1);
-        if (hit === true) { endRise(); return; }
-        // Remove obstacles far below
-        if (o.getScreenY(riseCamY) > arenaY + arenaHeight + 200 * gameScale) riseObstacles.splice(i, 1);
+        if (o.checkPlayerCollision(risePlayerWorldX, risePlayerWorldY, pr)) { endRise(); return; }
+        // Remove obstacles far below death floor
+        if (o.worldY > riseDeathFloor + arenaHeight) riseObstacles.splice(i, 1);
     }
 
-    // Update HUD
-    const metres = Math.floor(riseMaxHeight / 60);
+    // ── Sync player1 screen pos for draw ──
+    player1.pos.x = risePlayerWorldX;
+    player1.pos.y = floorScreenY + risePlayerWorldY - riseCamY;
+    player1.vel.x = risePlayerVelX;
+    player1.vel.y = risePlayerVelY;
+
+    // ── HUD ──
+    const metres = Math.floor(riseMaxHeight / gameScale / 8);
     document.getElementById('rise-height').innerText = metres + 'm';
     const recEl = document.getElementById('rise-record-tag');
-    if (metres > riseRecordHeight && metres > 0) { recEl.style.display = 'block'; }
-    else { recEl.style.display = 'none'; }
+    recEl.style.display = (metres > riseRecordHeight && metres > 0) ? 'block' : 'none';
+
+    // Update particles (rise exits early from main update loop)
+    particles.forEach(p => p.update(ts));
+    for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
+    for (let i = effects.length - 1; i >= 0; i--) if (effects[i].life <= 0) effects.splice(i, 1);
 }
 
-function drawRise() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (shakeTime > 0) { ctx.save(); ctx.translate((Math.random()-0.5)*8*gameScale, (Math.random()-0.5)*8*gameScale); shakeTime--; } else { ctx.save(); }
-
-    const wallT = 5 * gameScale;
-    const lx = arenaX + wallT, rx = arenaX + arenaWidth - wallT;
-    const cr = config.cornerRadius * gameScale;
-
-    // Scrolling grid background
-    const gridS = 100 * gameScale, yOff = riseCamY % gridS;
-    ctx.strokeStyle = 'rgba(255,100,100,0.04)'; ctx.lineWidth = 1;
-    for (let x = arenaX; x < arenaX + arenaWidth; x += gridS) { ctx.beginPath(); ctx.moveTo(x, arenaY); ctx.lineTo(x, arenaY + arenaHeight); ctx.stroke(); }
-    for (let y = arenaY - yOff; y < arenaY + arenaHeight + gridS; y += gridS) { ctx.beginPath(); ctx.moveTo(arenaX, y); ctx.lineTo(arenaX + arenaWidth, y); ctx.stroke(); }
-
-    // Draw arena walls (left, right, bottom with rounded corners) — NO TOP WALL
-    // Use same cr as physics
-    const crDraw = Math.min(config.cornerRadius * gameScale, arenaWidth * 0.18);
-    ctx.strokeStyle = '#555'; ctx.lineWidth = 10 * gameScale; ctx.lineCap = 'round';
-    ctx.beginPath();
-    // Left wall runs off the top of the screen
-    ctx.moveTo(lx, arenaY - 50 * gameScale);
-    ctx.lineTo(lx, arenaY + arenaHeight - wallT - crDraw);
-    ctx.arcTo(lx, arenaY + arenaHeight - wallT, lx + crDraw, arenaY + arenaHeight - wallT, crDraw);
-    ctx.lineTo(rx - crDraw, arenaY + arenaHeight - wallT);
-    ctx.arcTo(rx, arenaY + arenaHeight - wallT, rx, arenaY + arenaHeight - wallT - crDraw, crDraw);
-    ctx.lineTo(rx, arenaY - 50 * gameScale);
-    ctx.stroke();
-
-    // Death floor — glowing red
-    const deathFloorScreenY = arenaY + arenaHeight - riseDeathFloorY + riseCamY;
-    if (deathFloorScreenY < arenaY + arenaHeight + 5) {
-        const dfAlpha = Math.min(1, (arenaY + arenaHeight - deathFloorScreenY + 60 * gameScale) / (200 * gameScale));
-        // Glow
-        ctx.save();
-        const grad = ctx.createLinearGradient(0, deathFloorScreenY, 0, deathFloorScreenY + 80 * gameScale);
-        grad.addColorStop(0, `rgba(255,50,50,${dfAlpha * 0.5})`);
-        grad.addColorStop(1, 'rgba(255,0,0,0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(arenaX, deathFloorScreenY, arenaWidth, 80 * gameScale);
-        ctx.strokeStyle = `rgba(255,80,80,${dfAlpha})`; ctx.lineWidth = 3 * gameScale;
-        ctx.shadowBlur = 20 * gameScale; ctx.shadowColor = '#ff4444';
-        ctx.beginPath(); ctx.moveTo(arenaX, deathFloorScreenY); ctx.lineTo(arenaX + arenaWidth, deathFloorScreenY); ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.restore();
-    }
-
-    // Record line — shown on the wall when current height > 0
-    if (riseRecordHeight > 0) {
-        const recScreenY = arenaY + arenaHeight - wallT - playerRadius - (riseRecordHeight * 60) + riseCamY;
-        if (recScreenY > arenaY - 20 && recScreenY < arenaY + arenaHeight) {
-            ctx.save();
-            ctx.strokeStyle = 'rgba(255,215,0,0.6)'; ctx.lineWidth = 2 * gameScale;
-            ctx.setLineDash([8 * gameScale, 6 * gameScale]);
-            ctx.beginPath(); ctx.moveTo(arenaX + 5 * gameScale, recScreenY); ctx.lineTo(arenaX + arenaWidth - 5 * gameScale, recScreenY); ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.fillStyle = 'rgba(255,215,0,0.8)'; ctx.font = `bold ${10 * gameScale}px Arial`;
-            ctx.fillText('🏆 ' + riseRecordHeight + 'm', arenaX + 8 * gameScale, recScreenY - 4 * gameScale);
-            ctx.restore();
-        }
-    }
-
-    // Live record line: show where player height is relative to record, on the wall
-    const curMetres = Math.floor(riseMaxHeight / 60);
-    if (curMetres > 0 && curMetres >= riseRecordHeight) {
-        // Show gold line at player's current height on left wall
-        const liveY = player1.pos.y;
-        ctx.save();
-        ctx.fillStyle = '#FFD700'; ctx.font = `bold ${11 * gameScale}px Arial`;
-        ctx.fillText('▶ ' + curMetres + 'm', arenaX + 12 * gameScale, liveY);
-        ctx.restore();
-    }
-
-    // Draw obstacles
-    riseObstacles.forEach(o => o.draw(riseCamY));
-
-    // Draw player
-    player1.draw();
-
-    // Particles
-    particles.forEach(p => p.draw()); effects.forEach(e => e.draw());
-
-    ctx.restore();
-}
 
 // ─── Multiplayer ──────────────────────────────────────────────────────────────
-// Connect with both transports so the HTTP upgrade handshake works
-const socket = io({ transports: ['polling', 'websocket'] });
+const socket = io();
 
 socket.on('userJoined', () => {
     if (isHost) {
         multiStatus.innerText = 'PLAYER 2 JOINED ✓';
         multiStatus.style.color = '#2ecc71';
-        if (!p2Joined) {
-            p2Joined = true;
-            // Start the match countdown now that both players are in
-            if (countdown <= 0 && resetDelay <= 0) startCountdown();
-        }
+        if (!p2Joined) p2Joined = true;
     }
 });
 
@@ -1267,34 +2302,34 @@ socket.on('userJoined', () => {
 let mpBuffer = null, mpPrev = null, mpLerpT = 0;
 socket.on('gameStateUpdate', (state) => {
     if (isHost) return;
-    // Full server authority: snap ball and P1 (opponent) to server state immediately
-    // with light interpolation only for very small corrections
+    // Ball: light lerp for small corrections, snap for big divergence
     if (ball) {
         const tbx = state.ball.x * arenaWidth + arenaX, tby = state.ball.y * arenaHeight + arenaY;
         const bd = Math.hypot(tbx - ball.pos.x, tby - ball.pos.y);
-        if (bd > 30) { ball.pos.x = tbx; ball.pos.y = tby; } // snap on big error
-        else { ball.pos.x = ball.pos.x * 0.5 + tbx * 0.5; ball.pos.y = ball.pos.y * 0.5 + tby * 0.5; }
+        if (bd > 80) { ball.pos.x = tbx; ball.pos.y = tby; }
+        else { ball.pos.x += (tbx - ball.pos.x) * 0.2; ball.pos.y += (tby - ball.pos.y) * 0.2; }
         ball.vel.x = state.ball.vx * gameScale;
         ball.vel.y = state.ball.vy * gameScale;
     }
-    // P1 (opponent/host): fully authoritative
+    // P1 (host player = our opponent): authoritative snap
     if (player1) {
         const tp1x = state.p1.x * arenaWidth + arenaX, tp1y = state.p1.y * arenaHeight + arenaY;
         const p1d = Math.hypot(tp1x - player1.pos.x, tp1y - player1.pos.y);
-        if (p1d > 40) { player1.pos.x = tp1x; player1.pos.y = tp1y; }
-        else { player1.pos.x = player1.pos.x * 0.6 + tp1x * 0.4; player1.pos.y = player1.pos.y * 0.6 + tp1y * 0.4; }
+        if (p1d > 60) { player1.pos.x = tp1x; player1.pos.y = tp1y; }
+        else { player1.pos.x += (tp1x - player1.pos.x) * 0.3; player1.pos.y += (tp1y - player1.pos.y) * 0.3; }
         player1.vel.x = state.p1.vx * gameScale; player1.vel.y = state.p1.vy * gameScale;
-        player1.currentAngle = state.p1.angle; player1.boost = state.p1.boost; player1.jumps = state.p1.jumps;
+        player1.currentAngle = state.p1.angle; player1.boost = state.p1.boost;
+        player1.jumps = state.p1.jumps; player1.hasJump = state.p1.hasJump;
         if (state.p1.isBoosting) player1.createBoostFlame();
     }
-    // P2 (local player on client): server corrects position, but we simulate locally for feel
+    // P2 (our own player): apply server correction
     if (player2) {
         const tp2x = state.p2.x * arenaWidth + arenaX, tp2y = state.p2.y * arenaHeight + arenaY;
         const d2 = Math.hypot(tp2x - player2.pos.x, tp2y - player2.pos.y);
-        // Snap on big deviation, gentle blend on small
-        if (d2 > 60) { player2.pos.x = tp2x; player2.pos.y = tp2y; player2.vel.x = state.p2.vx * gameScale; player2.vel.y = state.p2.vy * gameScale; }
-        else if (d2 > 8) { player2.pos.x = player2.pos.x * 0.85 + tp2x * 0.15; player2.pos.y = player2.pos.y * 0.85 + tp2y * 0.15; }
-        player2.jumps = state.p2.jumps;
+        if (d2 > 80) { player2.pos.x = tp2x; player2.pos.y = tp2y; player2.vel.x = state.p2.vx * gameScale; player2.vel.y = state.p2.vy * gameScale; }
+        else { player2.pos.x += (tp2x - player2.pos.x) * 0.15; player2.pos.y += (tp2y - player2.pos.y) * 0.15; }
+        player2.currentAngle = state.p2.angle; player2.boost = state.p2.boost;
+        player2.jumps = state.p2.jumps; player2.hasJump = state.p2.hasJump;
     }
     scoreBlue = state.scoreB; scoreOrange = state.scoreO;
     scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
@@ -1340,16 +2375,19 @@ socket.on('remoteInput', (rk) => {
     }
 });
 
+let _syncThrottle = 0;
 function syncMultiplayer() {
     if (!currentRoom) return;
-    // Send input every frame for minimum latency
-    socket.emit('playerInput', { roomID: currentRoom, keys: localKeys });
-    // Host syncs full state every frame (60fps)
+    // Send input at 30fps (every 2 frames) — good balance of responsiveness vs bandwidth
+    _syncThrottle++;
+    if (_syncThrottle >= 2) { _syncThrottle = 0; socket.emit('playerInput', { roomID: currentRoom, keys: localKeys }); }
+    // Host syncs full state at 20fps (every 3 frames)
     if (!isHost || !player1 || !player2 || !ball) return;
+    if (_syncThrottle !== 0) return; // only sync when input was sent (every 2 frames)
     const state = {
         ball: { x: (ball.pos.x - arenaX) / arenaWidth, y: (ball.pos.y - arenaY) / arenaHeight, vx: ball.vel.x / gameScale, vy: ball.vel.y / gameScale },
-        p1: { x: (player1.pos.x - arenaX) / arenaWidth, y: (player1.pos.y - arenaY) / arenaHeight, vx: player1.vel.x / gameScale, vy: player1.vel.y / gameScale, angle: player1.currentAngle, boost: player1.boost, jumps: player1.jumps, isBoosting: (localKeys[keybinds.p1boost] && player1.boost > 0) },
-        p2: { x: (player2.pos.x - arenaX) / arenaWidth, y: (player2.pos.y - arenaY) / arenaHeight, vx: player2.vel.x / gameScale, vy: player2.vel.y / gameScale, angle: player2.currentAngle, boost: player2.boost, jumps: player2.jumps },
+        p1: { x: (player1.pos.x - arenaX) / arenaWidth, y: (player1.pos.y - arenaY) / arenaHeight, vx: player1.vel.x / gameScale, vy: player1.vel.y / gameScale, angle: player1.currentAngle, boost: player1.boost, jumps: player1.jumps, hasJump: player1.hasJump, isBoosting: (localKeys[keybinds.p1boost] && player1.boost > 0) },
+        p2: { x: (player2.pos.x - arenaX) / arenaWidth, y: (player2.pos.y - arenaY) / arenaHeight, vx: player2.vel.x / gameScale, vy: player2.vel.y / gameScale, angle: player2.currentAngle, boost: player2.boost, jumps: player2.jumps, hasJump: player2.hasJump },
         scoreB: scoreBlue, scoreO: scoreOrange, ts: timeScale, cd: countdown, rd: resetDelay,
         showGo: (countdown <= 0 && goTimer > 0),
         physics: { gravity: config.gravity, friction: config.friction, boostPower: config.boostPower, rotationSensitivity: config.rotationSensitivity }
@@ -1578,11 +2616,11 @@ function update(dt = 1) {
 
         if (resetDelay <= 0 && countdown <= 0 && goTimer <= 0) {
             if (currentRoom && !isHost) {
-                // Client: run P2 physics locally for responsive feel, server corrects via gameStateUpdate
-                if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); }
-                // Ball is fully server-authoritative — just integrate velocity locally between updates
+                // CLIENT: no local physics — everything driven by host gameStateUpdate
+                // Just dead-reckon ball between updates using last known velocity
                 ball.update(ts); checkWallCollision(ball);
             } else {
+                // LOCAL or HOST: full physics
                 if (p1Joined) { player1.handleInput(ts); player1.update(ts); checkWallCollision(player1); }
                 if (p2Joined) { player2.handleInput(ts); player2.update(ts); checkWallCollision(player2); }
             }
@@ -1611,7 +2649,7 @@ function draw() {
     ctx.save();
     if (shakeTime > 0) { ctx.translate((Math.random()-0.5)*10*gameScale, (Math.random()-0.5)*10*gameScale); shakeTime--; }
 
-    if (gameState === 'rise') { ctx.restore(); drawRise(); return; }
+    if (gameState === 'rise') { drawRise(); return; }
     if (gameState === 'trials') {
         // Scrolling grid background
         const gridS = 120 * gameScale, offset = trialDistance % gridS;
