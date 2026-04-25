@@ -596,11 +596,9 @@ class TrialObstacle {
                 p.pos.y + r > botY && p.pos.y - r < arenaY + arenaHeight) return 'hit';
         } else if (this.type === 'laser') {
             if (!this.isOpen) {
-                const laserH = this.h * 0.5; // tighter laser hitbox
-                // Horizontal check: only kill if player is overlapping the beam horizontally
-                if (p.pos.x + r > this.x && p.pos.x - r < this.x + this.w) {
-                    if (p.pos.y + r > this.y - laserH && p.pos.y - r < this.y + laserH) return 'hit';
-                }
+                const laserH = this.h * 0.5;
+                // Laser spans full arena width — hitbox matches the visual
+                if (p.pos.y + r > this.y - laserH && p.pos.y - r < this.y + laserH) return 'hit';
             }
         }
         return null;
@@ -625,7 +623,7 @@ class RiseObstacle {
         } else if (type === 'spike-wall') {
             // Horizontal spike bar across partial width
             const gapW = (220 - d * 80) * gameScale;
-            this.gapX = arenaX + (Math.random() * (arenaWidth * gameScale - gapW));
+            this.gapX = arenaX + (Math.random() * (arenaWidth - gapW));
             this.gapX = Math.max(arenaX + 10 * gameScale, Math.min(arenaX + arenaWidth - gapW - 10 * gameScale, this.gapX));
             this.gapW = gapW;
             this.h = 20 * gameScale;
@@ -981,7 +979,7 @@ function startRise() {
     resetPositions();
     riseHeight = 0; riseMaxHeight = 0; riseCamY = 0;
     riseObstacles = []; riseNextObsHeight = 500;
-    riseDeathFloorY = arenaHeight * 0.25; // floor starts 25% up from bottom in screen coords
+    riseDeathFloorY = 0; // floor starts at the very bottom and rises over time
     riseRecordHeight = (globalLeaderboard.rise || []).length > 0 ? globalLeaderboard.rise[0].score : 0;
 
     // Position player at bottom center
@@ -1102,11 +1100,10 @@ function updateRise(ts) {
     if (currentHeightPixels > riseMaxHeight) riseMaxHeight = currentHeightPixels;
     riseHeight = Math.max(0, startFloorScreen - player1.pos.y + riseCamY);
 
-    // Camera: keep ball at ~50% of screen height. riseCamY = how much we've scrolled up.
-    // Visual ball Y = ball.pos.y - riseCamY. Want that = arenaY + arenaHeight*0.5.
-    // So targetCamY = ball.pos.y - (arenaY + arenaHeight*0.5).
-    // Clamp to >= 0 (don't scroll before ball rises) and never decrease.
-    const targetCamY = Math.max(riseCamY, Math.max(0, ball.pos.y - (arenaY + arenaHeight * 0.5)));
+    // Camera: keep player at ~50% of screen height once they climb above center.
+    // targetCamY increases when player is in the top half, pulling obstacles down with them.
+    // Clamp to >= 0 (don't scroll before player rises) and never decrease (no backtrack).
+    const targetCamY = Math.max(riseCamY, Math.max(0, (arenaY + arenaHeight * 0.5) - player1.pos.y));
     riseCamY += (targetCamY - riseCamY) * 0.09 * ts;
 
     // Death floor: moves up with camera, lags behind slightly
@@ -1155,7 +1152,6 @@ function updateRise(ts) {
 }
 
 function drawRise() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (shakeTime > 0) { ctx.save(); ctx.translate((Math.random()-0.5)*8*gameScale, (Math.random()-0.5)*8*gameScale); shakeTime--; } else { ctx.save(); }
 
     const wallT = 5 * gameScale;
@@ -1592,10 +1588,9 @@ function update(dt = 1) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (flashTime > 0) { ctx.fillStyle = flashColor; ctx.fillRect(0, 0, canvas.width, canvas.height); flashTime--; }
+    if (gameState === 'rise') { drawRise(); return; }
     ctx.save();
     if (shakeTime > 0) { ctx.translate((Math.random()-0.5)*10*gameScale, (Math.random()-0.5)*10*gameScale); shakeTime--; }
-
-    if (gameState === 'rise') { drawRise(); return; }
     if (gameState === 'trials') {
         // Scrolling grid background
         const gridS = 120 * gameScale, offset = trialDistance % gridS;
