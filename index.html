@@ -622,17 +622,17 @@ class RiseObstacle {
             this.x = arenaX + (30 + Math.random() * (arenaWidth - 60) * gameScale - this.w / 2);
             this.x = Math.max(arenaX + 20 * gameScale, Math.min(arenaX + arenaWidth - this.w - 20 * gameScale, this.x));
         } else if (type === 'spike-wall') {
-            // Horizontal spike bar across partial width
-            const gapW = (220 - d * 80) * gameScale;
-            this.gapX = arenaX + (Math.random() * (arenaWidth * gameScale - gapW));
+            // Horizontal spike bar across partial width — gap player must fly through
+            const gapW = (240 - d * 80) * gameScale;
+            this.gapX = arenaX + 10 * gameScale + Math.random() * (arenaWidth - gapW - 20 * gameScale);
             this.gapX = Math.max(arenaX + 10 * gameScale, Math.min(arenaX + arenaWidth - gapW - 10 * gameScale, this.gapX));
             this.gapW = gapW;
-            this.h = 20 * gameScale;
+            this.h = 22 * gameScale;
         } else if (type === 'moving-block') {
             this.w = (60 + Math.random() * 40) * gameScale;
             this.h = 25 * gameScale;
-            this.moveRange = (100 + Math.random() * 120) * gameScale;
-            this.baseX = arenaX + arenaWidth / 2;
+            this.moveRange = Math.min((120 + Math.random() * 100) * gameScale, arenaWidth * 0.3);
+            this.baseX = arenaX + arenaWidth * (0.25 + Math.random() * 0.5);
             this.phase = Math.random() * Math.PI * 2;
             this.moveSpd = 0.03 + d * 0.03;
         }
@@ -980,7 +980,7 @@ function startRise() {
     resetPositions();
     riseHeight = 0; riseMaxHeight = 0; riseCamY = 0;
     riseObstacles = []; riseNextObsHeight = 500;
-    riseDeathFloorY = arenaHeight * 0.25; // floor starts 25% up from bottom in screen coords
+    riseDeathFloorY = -arenaHeight * 0.5; // floor starts well BELOW the arena — gives player time to get moving
     riseRecordHeight = (globalLeaderboard.rise || []).length > 0 ? globalLeaderboard.rise[0].score : 0;
 
     // Position player at bottom center
@@ -1034,60 +1034,71 @@ function updateRise(ts) {
     player1.boost = 112;
     player1.handleInput(ts);
 
-    // Custom wall collision for rise — no top wall, left/right walls only, rounded bottom corners
+    // Physics: left/right walls, rounded bottom corners, bottom floor. No top wall.
     const lx = arenaX + wallT, rx = arenaX + arenaWidth - wallT;
-    const screenFloorY = arenaY + arenaHeight - wallT; // the physical bottom floor (in screen coords)
+    const screenFloorY = arenaY + arenaHeight - wallT;
     const r = player1.radius;
-    const res = 0.6;
-    const cr = config.cornerRadius * gameScale;
+    const res = 0.55;
+    // Corner radius for the rounded bottom corners — use a fixed comfortable value
+    const cr = Math.min(config.cornerRadius * gameScale, arenaWidth * 0.18);
 
-    // Apply gravity
+    // Apply gravity manually (replaces Entity.update gravity step)
     player1.applyForce(new Vector2D(0, config.gravity * player1.mass * gameScale * RISE_GRAVITY_SCALE));
-    player1.vel.x += player1.acc.x * ts; player1.vel.y += player1.acc.y * ts;
+    player1.vel.x += player1.acc.x * ts;
+    player1.vel.y += player1.acc.y * ts;
     player1.vel.mult(Math.pow(config.friction, ts));
-    player1.pos.x += player1.vel.x * ts; player1.pos.y += player1.vel.y * ts;
+    player1.pos.x += player1.vel.x * ts;
+    player1.pos.y += player1.vel.y * ts;
     player1.acc.mult(0);
     player1.isTouchingWall = false; player1.isTouchingGround = false;
 
-    // Left wall with rounded bottom corner
-    if (player1.pos.y > screenFloorY - cr * 1.2) {
-        // In bottom-left corner zone
-        if (player1.pos.x < lx + cr) {
-            const cx = lx + cr, cy = screenFloorY - cr;
-            const dx = player1.pos.x - cx, dy = player1.pos.y - cy;
-            const d = Math.sqrt(dx*dx + dy*dy);
-            if (d < cr + r && d > 0) {
-                const nx = dx/d, ny = dy/d;
-                player1.pos.x = cx + nx * (cr + r);
-                player1.pos.y = cy + ny * (cr + r);
-                const dot = player1.vel.x * nx + player1.vel.y * ny;
-                if (dot < 0) { player1.vel.x -= (1 + res) * dot * nx; player1.vel.y -= (1 + res) * dot * ny; }
-                player1.isTouchingWall = true;
-                if (ny < -0.3) { player1.isTouchingGround = true; player1.jumps = 1; player1.hasJump = true; }
-            }
+    // Rounded bottom-left corner: center at (lx+cr, screenFloorY-cr)
+    // This is a CONCAVE corner — player must stay OUTSIDE the arc (d >= cr - r)
+    {
+        const cx = lx + cr, cy = screenFloorY - cr;
+        const dx = player1.pos.x - cx, dy = player1.pos.y - cy;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        // Player is in the corner quadrant (bottom-left of center)
+        if (player1.pos.x < cx && player1.pos.y > cy && d < cr + r && d > 0) {
+            // Push outward from corner center so player slides along the arc
+            const nx = dx/d, ny = dy/d;
+            player1.pos.x = cx + nx * (cr - r);
+            player1.pos.y = cy + ny * (cr - r);
+            const dot = player1.vel.x * nx + player1.vel.y * ny;
+            if (dot < 0) { player1.vel.x -= (1 + res) * dot * nx; player1.vel.y -= (1 + res) * dot * ny; }
+            player1.isTouchingWall = true;
+            if (ny > 0.3) { player1.isTouchingGround = true; player1.jumps = 1; player1.hasJump = true; }
         }
-        // In bottom-right corner zone
-        if (player1.pos.x > rx - cr) {
-            const cx = rx - cr, cy = screenFloorY - cr;
-            const dx = player1.pos.x - cx, dy = player1.pos.y - cy;
-            const d = Math.sqrt(dx*dx + dy*dy);
-            if (d < cr + r && d > 0) {
-                const nx = dx/d, ny = dy/d;
-                player1.pos.x = cx + nx * (cr + r);
-                player1.pos.y = cy + ny * (cr + r);
-                const dot = player1.vel.x * nx + player1.vel.y * ny;
-                if (dot < 0) { player1.vel.x -= (1 + res) * dot * nx; player1.vel.y -= (1 + res) * dot * ny; }
-                player1.isTouchingWall = true;
-                if (ny < -0.3) { player1.isTouchingGround = true; player1.jumps = 1; player1.hasJump = true; }
-            }
+    }
+    // Rounded bottom-right corner: center at (rx-cr, screenFloorY-cr)
+    {
+        const cx = rx - cr, cy = screenFloorY - cr;
+        const dx = player1.pos.x - cx, dy = player1.pos.y - cy;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (player1.pos.x > cx && player1.pos.y > cy && d < cr + r && d > 0) {
+            const nx = dx/d, ny = dy/d;
+            player1.pos.x = cx + nx * (cr - r);
+            player1.pos.y = cy + ny * (cr - r);
+            const dot = player1.vel.x * nx + player1.vel.y * ny;
+            if (dot < 0) { player1.vel.x -= (1 + res) * dot * nx; player1.vel.y -= (1 + res) * dot * ny; }
+            player1.isTouchingWall = true;
+            if (ny > 0.3) { player1.isTouchingGround = true; player1.jumps = 1; player1.hasJump = true; }
         }
     }
 
-    // Left/right flat walls
-    if (player1.pos.x - r < lx) { player1.pos.x = lx + r; player1.vel.x = Math.abs(player1.vel.x) * res; player1.isTouchingWall = true; player1.jumps = 1; player1.hasJump = true; }
-    if (player1.pos.x + r > rx) { player1.pos.x = rx - r; player1.vel.x = -Math.abs(player1.vel.x) * res; player1.isTouchingWall = true; player1.jumps = 1; player1.hasJump = true; }
+    // Left/right flat walls (above corner zone)
+    if (player1.pos.x - r < lx) {
+        player1.pos.x = lx + r;
+        player1.vel.x = Math.abs(player1.vel.x) * res;
+        player1.isTouchingWall = true; player1.jumps = 1; player1.hasJump = true;
+    }
+    if (player1.pos.x + r > rx) {
+        player1.pos.x = rx - r;
+        player1.vel.x = -Math.abs(player1.vel.x) * res;
+        player1.isTouchingWall = true; player1.jumps = 1; player1.hasJump = true;
+    }
 
-    // Bottom floor (physical screen floor)
+    // Bottom floor
     if (player1.pos.y + r > screenFloorY) {
         player1.pos.y = screenFloorY - r;
         player1.vel.y = -Math.abs(player1.vel.y) * res;
@@ -1120,14 +1131,16 @@ function updateRise(ts) {
     }
 
     // Spawn obstacles
-    if (riseHeight > riseNextObsHeight - arenaHeight / gameScale) {
+    if (riseHeight > riseNextObsHeight - arenaHeight * 0.3) {
         const difficulty = Math.min(1, riseMaxHeight / (arenaHeight * 5));
         const types = difficulty < 0.3 ? ['platform','platform','spike-wall'] :
                       difficulty < 0.6 ? ['platform','spike-wall','moving-block'] :
                                          ['spike-wall','moving-block','moving-block','spike-wall'];
         const type = types[Math.floor(Math.random() * types.length)];
         // Place obstacle above current view
-        const obsWorldY = -(riseCamY + arenaHeight * 0.15 + Math.random() * arenaHeight * 0.3);
+        // Place obstacle above the current view (getScreenY = worldY - camY + arenaY + arenaHeight)
+        // To get screen Y = arenaY + (0.05..0.4)*arenaHeight: worldY = camY - (0.6..0.95)*arenaHeight
+        const obsWorldY = riseCamY - arenaHeight * (0.6 + Math.random() * 0.3);
         riseObstacles.push(new RiseObstacle(obsWorldY, type, difficulty));
         riseNextObsHeight += 300 + Math.random() * 400;
     }
@@ -1165,15 +1178,17 @@ function drawRise() {
     for (let y = arenaY - yOff; y < arenaY + arenaHeight + gridS; y += gridS) { ctx.beginPath(); ctx.moveTo(arenaX, y); ctx.lineTo(arenaX + arenaWidth, y); ctx.stroke(); }
 
     // Draw arena walls (left, right, bottom with rounded corners) — NO TOP WALL
+    // Use same cr as physics
+    const crDraw = Math.min(config.cornerRadius * gameScale, arenaWidth * 0.18);
     ctx.strokeStyle = '#555'; ctx.lineWidth = 10 * gameScale; ctx.lineCap = 'round';
     ctx.beginPath();
-    // Left wall top → bottom-left corner arc → bottom → bottom-right corner arc → right wall top
-    ctx.moveTo(lx, arenaY - 20 * gameScale); // left wall going up past visible area
-    ctx.lineTo(lx, arenaY + arenaHeight - wallT - cr);
-    ctx.arcTo(lx, arenaY + arenaHeight - wallT, lx + cr, arenaY + arenaHeight - wallT, cr);
-    ctx.lineTo(rx - cr, arenaY + arenaHeight - wallT);
-    ctx.arcTo(rx, arenaY + arenaHeight - wallT, rx, arenaY + arenaHeight - wallT - cr, cr);
-    ctx.lineTo(rx, arenaY - 20 * gameScale);
+    // Left wall runs off the top of the screen
+    ctx.moveTo(lx, arenaY - 50 * gameScale);
+    ctx.lineTo(lx, arenaY + arenaHeight - wallT - crDraw);
+    ctx.arcTo(lx, arenaY + arenaHeight - wallT, lx + crDraw, arenaY + arenaHeight - wallT, crDraw);
+    ctx.lineTo(rx - crDraw, arenaY + arenaHeight - wallT);
+    ctx.arcTo(rx, arenaY + arenaHeight - wallT, rx, arenaY + arenaHeight - wallT - crDraw, crDraw);
+    ctx.lineTo(rx, arenaY - 50 * gameScale);
     ctx.stroke();
 
     // Death floor — glowing red
@@ -1233,13 +1248,18 @@ function drawRise() {
 }
 
 // ─── Multiplayer ──────────────────────────────────────────────────────────────
-const socket = io();
+// Connect with both transports so the HTTP upgrade handshake works
+const socket = io({ transports: ['polling', 'websocket'] });
 
 socket.on('userJoined', () => {
     if (isHost) {
         multiStatus.innerText = 'PLAYER 2 JOINED ✓';
         multiStatus.style.color = '#2ecc71';
-        if (!p2Joined) p2Joined = true;
+        if (!p2Joined) {
+            p2Joined = true;
+            // Start the match countdown now that both players are in
+            if (countdown <= 0 && resetDelay <= 0) startCountdown();
+        }
     }
 });
 
@@ -1591,7 +1611,7 @@ function draw() {
     ctx.save();
     if (shakeTime > 0) { ctx.translate((Math.random()-0.5)*10*gameScale, (Math.random()-0.5)*10*gameScale); shakeTime--; }
 
-    if (gameState === 'rise') { drawRise(); return; }
+    if (gameState === 'rise') { ctx.restore(); drawRise(); return; }
     if (gameState === 'trials') {
         // Scrolling grid background
         const gridS = 120 * gameScale, offset = trialDistance % gridS;
