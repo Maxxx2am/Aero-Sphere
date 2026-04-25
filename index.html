@@ -11,13 +11,12 @@
         canvas { display: block; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         #scoreboard { position: absolute; top: 10px; left: 15px; font-size: 40px; font-weight: 900; color: #fff; background: rgba(0, 0, 0, 0.2); padding: 2px 20px; border-left: 6px solid #555; font-family: 'Arial Black', Gadget, sans-serif; }
-        #settings-toggle, #trials-toggle, #leaderboard-toggle, #multiplayer-toggle, #rise-toggle { position: absolute; cursor: pointer; pointer-events: auto; z-index: 100; opacity: 0.5; transition: opacity 0.2s; }
-        #settings-toggle { top: 20px; right: 25px; }
-        #multiplayer-toggle { top: 20px; right: 70px; }
-        #leaderboard-toggle { top: 20px; right: 115px; }
-        #trials-toggle { top: 62px; right: 25px; }
-        #rise-toggle { top: 62px; right: 70px; }
-        #settings-toggle:hover, #trials-toggle:hover, #leaderboard-toggle:hover, #multiplayer-toggle:hover, #rise-toggle:hover { opacity: 1; }
+        #settings-toggle, #trials-toggle, #leaderboard-toggle, #multiplayer-toggle { position: absolute; top: 25px; cursor: pointer; pointer-events: auto; z-index: 100; opacity: 0.5; transition: opacity 0.2s; }
+        #settings-toggle { right: 25px; }
+        #trials-toggle { right: 70px; }
+        #leaderboard-toggle { right: 115px; }
+        #multiplayer-toggle { right: 160px; }
+        #settings-toggle:hover, #trials-toggle:hover, #leaderboard-toggle:hover, #multiplayer-toggle:hover { opacity: 1; }
         
         #settings-panel, #leaderboard-panel, #multiplayer-panel { position: absolute; top: 75px; right: 25px; background: rgba(10, 10, 10, 0.98); border: 1px solid #444; padding: 18px; border-radius: 2px; display: none; pointer-events: auto; width: 260px; z-index: 99; }
         #trials-menu { top: 50%; left: 50%; transform: translate(-50%, -50%); width: 320px; text-align: center; }
@@ -87,11 +86,11 @@
     <div id="p2-join" class="controls-hint" style="right: 40px; bottom: 40px; color: #fff; font-size: 14px;">PRESS <span style="color: #FF851B">↑</span> TO JOIN</div>
 </div>
 
+<div id="leaderboard-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55.47.98.97 1.21C11.47 18.44 12 19 12 19s.53-.56 1.03-.79c.5-.23.97-.66.97-1.21v-2.34"></path><path d="M12 15a6 6 0 0 0 6-6V3H6v6a6 6 0 0 0 6 6Z"></path></svg></div>
+<div id="trials-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
+<div id="rise-toggle" style="position:absolute; top:25px; right:205px; cursor:pointer; pointer-events:auto; z-index:100; opacity:0.5; transition:opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 18 12 13 7 18"></polyline></svg></div>
 <div id="settings-toggle"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></div>
 <div id="multiplayer-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
-<div id="leaderboard-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55.47.98.97 1.21C11.47 18.44 12 19 12 19s.53-.56 1.03-.79c.5-.23.97-.66.97-1.21v-2.34"></path><path d="M12 15a6 6 0 0 0 6-6V3H6v6a6 6 0 0 0 6 6Z"></path></svg></div>
-<div id="trials-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4fc3f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
-<div id="rise-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 18 12 13 7 18"></polyline></svg></div>
 
 <div id="trials-menu" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:320px; text-align:center; background:rgba(10,10,10,0.98); border:1px solid #333; padding:30px; border-radius:4px; display:none; pointer-events:auto; z-index:99;">
     <div style="font-size:9px; color:#555; letter-spacing:3px; margin-bottom:5px;">GAME MODE</div>
@@ -981,7 +980,7 @@ function startRise() {
     resetPositions();
     riseHeight = 0; riseMaxHeight = 0; riseCamY = 0;
     riseObstacles = []; riseNextObsHeight = 500;
-    riseDeathFloorY = 0; // starts at bottom of arena (off screen), rises gradually
+    riseDeathFloorY = -arenaHeight * 0.8; // starts well below — player has room
     riseRecordHeight = (globalLeaderboard.rise || []).length > 0 ? globalLeaderboard.rise[0].score : 0;
 
     // Position player at bottom center
@@ -990,6 +989,10 @@ function startRise() {
     player1.pos.y = arenaY + arenaHeight - wallT - playerRadius;
     player1.vel.x = 0; player1.vel.y = 0;
     player1.jumps = 1; player1.hasJump = true; player1.boost = 112;
+    // Ball starts next to player on the floor
+    ball.pos.x = arenaX + arenaWidth / 2 + playerRadius + ballRadius + 4 * gameScale;
+    ball.pos.y = arenaY + arenaHeight - wallT - ballRadius;
+    ball.vel.x = 0; ball.vel.y = 0;
 
     if (player1) {
         player1.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost,
@@ -1106,14 +1109,16 @@ function updateRise(ts) {
     const targetCamY = Math.max(riseCamY, -(player1.pos.y - arenaY - arenaHeight * 0.45));
     riseCamY += (targetCamY - riseCamY) * 0.08 * ts;
 
-    // Death floor: moves up with camera, lags behind slightly
-    // In screen space: death floor is at arenaY + arenaHeight - riseDeathFloorY + riseCamY
-    // It accelerates as you go higher
-    const deathSpeed = 0.3 + riseMaxHeight / (arenaHeight * 8);
-    riseDeathFloorY += deathSpeed * ts;
-
-    // Death floor screen Y
-    const deathFloorScreenY = arenaY + arenaHeight - riseDeathFloorY + riseCamY;
+    // Death floor: chases player max-height with a big gap — never drops when player falls
+    // riseDeathFloorY = pixels above the starting floor the death floor has risen
+    // Target is always arenaHeight*0.75 below the highest point reached
+    const floorTarget = riseMaxHeight - arenaHeight * 0.75;
+    if (floorTarget > riseDeathFloorY) {
+        const riseSpeed = (0.5 + riseMaxHeight / (arenaHeight * 10)) * ts;
+        riseDeathFloorY = Math.min(riseDeathFloorY + riseSpeed, floorTarget);
+    }
+    // Convert to screen Y (startFloorScreen minus how high the floor has risen, camera-adjusted)
+    const deathFloorScreenY = startFloorScreen - riseDeathFloorY + riseCamY;
 
     // Kill if player falls below death floor
     if (player1.pos.y + r > deathFloorScreenY) {
@@ -1141,6 +1146,35 @@ function updateRise(ts) {
         if (hit === true) { endRise(); return; }
         // Remove obstacles far below
         if (o.getScreenY(riseCamY) > arenaY + arenaHeight + 200 * gameScale) riseObstacles.splice(i, 1);
+    }
+
+    // ── Ball physics in rise mode ──
+    { const lxb = arenaX + wallT, rxb = arenaX + arenaWidth - wallT, fyb = arenaY + arenaHeight - wallT;
+      ball.vel.y += config.gravity * 0.35 * gameScale * ts;
+      ball.vel.x *= Math.pow(config.friction, ts); ball.vel.y *= Math.pow(config.friction, ts);
+      ball.pos.x += ball.vel.x * ts; ball.pos.y += ball.vel.y * ts;
+      if (ball.pos.x - ballRadius < lxb) { ball.pos.x = lxb + ballRadius; ball.vel.x = Math.abs(ball.vel.x) * 0.7; }
+      if (ball.pos.x + ballRadius > rxb) { ball.pos.x = rxb - ballRadius; ball.vel.x = -Math.abs(ball.vel.x) * 0.7; }
+      if (ball.pos.y + ballRadius > fyb) { ball.pos.y = fyb - ballRadius; ball.vel.y = -Math.abs(ball.vel.y) * 0.7; }
+      // player collision
+      const bpDx = ball.pos.x - player1.pos.x, bpDy = ball.pos.y - player1.pos.y;
+      const bpD = Math.sqrt(bpDx*bpDx + bpDy*bpDy), bpMin = ballRadius + playerRadius;
+      if (bpD < bpMin && bpD > 0) {
+          const nx = bpDx/bpD, ny = bpDy/bpD, ov = bpMin - bpD;
+          ball.pos.x += nx*ov*0.65; ball.pos.y += ny*ov*0.65;
+          player1.pos.x -= nx*ov*0.35; player1.pos.y -= ny*ov*0.35;
+          const rvx = ball.vel.x - player1.vel.x, rvy = ball.vel.y - player1.vel.y, dot = rvx*nx+rvy*ny;
+          if (dot < 0) { const imp = dot*1.2; ball.vel.x -= imp*0.65*nx; ball.vel.y -= imp*0.65*ny; player1.vel.x += imp*0.35*nx; player1.vel.y += imp*0.35*ny; }
+          let ba = player1.currentAngle + Math.PI; while(ba>Math.PI) ba-=Math.PI*2; while(ba<-Math.PI) ba+=Math.PI*2;
+          const atb = Math.atan2(ny,nx); let df = Math.abs(atb-ba); if(df>Math.PI) df=Math.PI*2-df;
+          if (df < 0.65) { player1.jumps = 1; player1.hasJump = true; player1.pulse = 20; }
+          currentDribbler = player1;
+      }
+      // respawn ball if it falls below death floor
+      if (ball.pos.y - ballRadius > deathFloorScreenY) {
+          ball.pos.x = player1.pos.x; ball.pos.y = player1.pos.y - playerRadius - ballRadius - 5*gameScale;
+          ball.vel.x = 0; ball.vel.y = -2*gameScale;
+      }
     }
 
     // Update HUD
@@ -1223,6 +1257,9 @@ function drawRise() {
 
     // Draw obstacles
     riseObstacles.forEach(o => o.draw(riseCamY));
+
+    // Draw ball
+    ball.draw();
 
     // Draw player
     player1.draw();
