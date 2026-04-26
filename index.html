@@ -1023,11 +1023,14 @@ socket.on('roomsList', (roomIDs) => {
 });
 
 document.getElementById('multiplayer-toggle').onclick = () => {
-    const p = document.getElementById('multiplayer-panel');
-    const opening = p.style.display !== 'block';
-    document.getElementById('settings-panel').style.display = 'none';
-    document.getElementById('leaderboard-panel').style.display = 'none';
-    p.style.display = opening ? 'block' : 'none';
+    const msg = document.getElementById('countdown-msg');
+    msg.innerText = 'WORKING ON IT.';
+    msg.style.display = 'block';
+    msg.style.fontSize = '40px';
+    setTimeout(() => {
+        msg.style.display = 'none';
+        msg.style.fontSize = '120px';
+    }, 1500);
 };
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
