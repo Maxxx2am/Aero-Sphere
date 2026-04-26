@@ -25,7 +25,7 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // Global Leaderboard - Persistent storage
-let leaderboards = { dribble: [], trials: [], rise: [] };
+let leaderboards = { dribble: [], trials: [] };
 
 if (fs.existsSync(DB_FILE)) {
     try {
@@ -33,7 +33,8 @@ if (fs.existsSync(DB_FILE)) {
         if (Array.isArray(data)) {
             leaderboards.dribble = data;
         } else {
-            leaderboards = { dribble: [], trials: [], rise: [], ...data };
+            leaderboards = { dribble: [], trials: [], ...data };
+            delete leaderboards.rise;
         }
     } catch (e) { console.error("Error loading leaderboard:", e); }
 }
@@ -50,7 +51,6 @@ app.post('/api/leaderboard', (req, res) => {
     const { name, score, category } = req.body;
     let key = 'dribble';
     if (category === 'trials') key = 'trials';
-    else if (category === 'rise') key = 'rise';
 
     if (!name || typeof score !== 'number') {
         return res.status(400).json({ error: "Invalid data" });

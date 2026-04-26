@@ -11,13 +11,12 @@
         canvas { display: block; }
         #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         #scoreboard { position: absolute; top: 10px; left: 15px; font-size: 40px; font-weight: 900; color: #fff; background: rgba(0, 0, 0, 0.2); padding: 2px 20px; border-left: 6px solid #555; font-family: 'Arial Black', Gadget, sans-serif; }
-        #settings-toggle, #multiplayer-toggle, #leaderboard-toggle, #trials-toggle, #rise-toggle { position: absolute; cursor: pointer; pointer-events: auto; z-index: 100; opacity: 0.5; transition: opacity 0.2s; }
+        #settings-toggle, #multiplayer-toggle, #leaderboard-toggle, #trials-toggle { position: absolute; cursor: pointer; pointer-events: auto; z-index: 100; opacity: 0.5; transition: opacity 0.2s; }
         #settings-toggle    { top: 20px; right: 25px; }
         #multiplayer-toggle { top: 20px; right: 70px; }
         #leaderboard-toggle { top: 20px; right: 115px; }
-        #trials-toggle      { top: 62px; right: 70px; }
-        #rise-toggle        { top: 62px; right: 25px; }
-        #settings-toggle:hover, #multiplayer-toggle:hover, #leaderboard-toggle:hover, #trials-toggle:hover, #rise-toggle:hover { opacity: 1; }
+        #trials-toggle      { top: 20px; right: 160px; }
+        #settings-toggle:hover, #multiplayer-toggle:hover, #leaderboard-toggle:hover, #trials-toggle:hover { opacity: 1; }
         
         #settings-panel, #leaderboard-panel, #multiplayer-panel { position: absolute; top: 75px; right: 25px; background: rgba(10, 10, 10, 0.98); border: 1px solid #444; padding: 18px; border-radius: 2px; display: none; pointer-events: auto; width: 260px; z-index: 99; }
         #trials-menu { top: 50%; left: 50%; transform: translate(-50%, -50%); width: 320px; text-align: center; }
@@ -91,7 +90,6 @@
 <div id="multiplayer-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
 <div id="leaderboard-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55.47.98.97 1.21C11.47 18.44 12 19 12 19s.53-.56 1.03-.79c.5-.23.97-.66.97-1.21v-2.34"></path><path d="M12 15a6 6 0 0 0 6-6V3H6v6a6 6 0 0 0 6 6Z"></path></svg></div>
 <div id="trials-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4fc3f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
-<div id="rise-toggle"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"></polyline><polyline points="17 18 12 13 7 18"></polyline></svg></div>
 
 <div id="trials-menu" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:320px; text-align:center; background:rgba(10,10,10,0.98); border:1px solid #333; padding:30px; border-radius:4px; display:none; pointer-events:auto; z-index:99;">
     <div style="font-size:9px; color:#555; letter-spacing:3px; margin-bottom:5px;">GAME MODE</div>
@@ -99,32 +97,6 @@
     <p style="font-size: 11px; color: #888; margin: 12px 0; line-height: 1.7;">Infinite boost. 3 jumps. Dodge rings, spikes, lasers &amp; crushers.<br>Hit obstacles with your <span style="color:#fff">engine arc</span> to reset your jumps.<br>New hazards unlock as you go further. How far can you go?</p>
     <button id="begin-trials-btn" class="ui-btn">BEGIN</button>
     <button id="cancel-trials-btn" class="ui-btn cancel">CANCEL</button>
-</div>
-
-<!-- AERO-RISE menu -->
-<div id="rise-menu" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:320px; text-align:center; background:rgba(10,10,10,0.98); border:1px solid #333; padding:30px; border-radius:4px; display:none; pointer-events:auto; z-index:99;">
-    <div style="font-size:9px; color:#ff6b6b; letter-spacing:3px; margin-bottom:5px;">GAME MODE</div>
-    <h2 style="color:#fff; margin:0 0 8px; font-size:22px; letter-spacing:3px;">AERO-RISE</h2>
-    <p style="font-size:11px; color:#888; margin:12px 0; line-height:1.7;">Climb as high as you can.<br>Dodge obstacles. Don't fall into the <span style="color:#ff4444">red void</span>.<br>The rounded corners let you air dribble up the walls.<br>Beat your record — watch it track on the wall live.</p>
-    <button id="begin-rise-btn" class="ui-btn" style="border-color:#ff6b6b; color:#ff6b6b;">ASCEND</button>
-    <button id="cancel-rise-btn" class="ui-btn cancel">CANCEL</button>
-</div>
-
-<!-- AERO-RISE HUD -->
-<div id="rise-hud" style="display:none; position:absolute; top:15px; left:50%; transform:translateX(-50%); pointer-events:none; z-index:5; text-align:center; font-family:'Arial Black',sans-serif;">
-    <div id="rise-height" style="font-size:36px; font-weight:900; color:#fff; text-shadow:0 0 20px rgba(255,100,100,0.5);">0m</div>
-    <div id="rise-record-tag" style="font-size:10px; color:#ff6b6b; letter-spacing:2px; display:none;">🏆 RECORD!</div>
-</div>
-
-<!-- AERO-RISE Game Over -->
-<div id="rise-gameover" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); border:1px solid #333; padding:35px 50px; text-align:center; display:none; z-index:200; pointer-events:auto; border-radius:4px;">
-    <div style="font-size:11px; color:#555; letter-spacing:3px; margin-bottom:8px;">AERO-RISE</div>
-    <h2 style="color:#fff; margin:0 0 5px; font-size:26px; letter-spacing:3px;">FALLEN</h2>
-    <div id="rise-go-height" style="font-size:52px; font-weight:900; color:#fff; font-family:'Arial Black',sans-serif; text-shadow:0 0 20px rgba(255,80,80,0.5);">0</div>
-    <div style="font-size:18px; color:#777; margin-bottom:20px;">metres</div>
-    <div id="rise-go-best" style="font-size:10px; color:#FFD700; margin-bottom:20px; min-height:16px;"></div>
-    <button class="ui-btn" id="retry-rise-btn" style="margin-top:0; border-color:#ff6b6b;">TRY AGAIN</button>
-    <button class="ui-btn cancel" id="exit-rise-btn">EXIT TO ARENA</button>
 </div>
 
 <div id="leaderboard-panel">
@@ -135,7 +107,6 @@
     <div style="display: flex; justify-content: space-around; margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 5px;">
         <span id="tab-dribble" style="font-size: 9px; cursor: pointer; color: #fff; font-weight: bold;">DRIBBLES</span>
         <span id="tab-trials" style="font-size: 9px; cursor: pointer; color: #555;">TRIALS</span>
-        <span id="tab-rise" style="font-size: 9px; cursor: pointer; color: #555;">RISE</span>
     </div>
     <div id="leaderboard-list" class="leaderboard-list"></div>
     <button id="see-all-btn" style="width: 100%; background: #222; color: #777; border: 1px solid #333; padding: 8px; cursor: pointer; font-size: 9px; font-weight: bold; margin-top: 10px; letter-spacing: 1px;">SEE ALL RECORDS</button>
@@ -304,17 +275,12 @@ function finishRebind(code) {
 
 let player1, player2, ball, posts = [], p1Joined = false, p2Joined = false;
 let currentDribbler = null, dribbleTime = 0, playerName = localStorage.getItem('aeroPlayerName') || '';
-let globalLeaderboard = { dribble: [], trials: [], rise: [] }, leaderboardType = 'dribble';
+let globalLeaderboard = { dribble: [], trials: [] }, leaderboardType = 'dribble';
 
 // ─── Trials State ─────────────────────────────────────────────────────────────
 let trialDistance = 0, trialSpeed = 5.0, trialObstacles = [], nextObsDist = 0;
 let trialAccel = 0, trialJumpHeld = false;
 const TRIAL_BASE_SPEED = 5.0, TRIAL_MAX_SPEED = 28.0;
-
-// ─── Rise State ───────────────────────────────────────────────────────────────
-let riseHeight = 0, riseMaxHeight = 0, riseCamY = 0, riseObstacles = [], riseNextObsHeight = 800;
-let riseDeathFloorY = 0, riseRecordHeight = 0, riseActive = false;
-const RISE_GRAVITY_SCALE = 0.85; // slightly lighter gravity for rise mode
 
 // ─── Multiplayer State ────────────────────────────────────────────────────────
 let currentRoom = null, isHost = false, clientGoalVisible = false, clientShowGo = false;
@@ -605,108 +571,6 @@ class TrialObstacle {
     }
 }
 
-// ─── Rise Obstacle ────────────────────────────────────────────────────────────
-class RiseObstacle {
-    constructor(worldY, type, difficulty) {
-        this.worldY = worldY; // Y in world space (negative = up)
-        this.type = type;
-        this.w = 0; this.h = 0;
-        this.x = 0; // relative to arenaX
-        const d = difficulty; // 0..1
-
-        if (type === 'platform') {
-            // Floating platform player must dodge or use
-            this.w = (120 + Math.random() * 160) * gameScale;
-            this.h = 18 * gameScale;
-            this.x = arenaX + (30 + Math.random() * (arenaWidth - 60) * gameScale - this.w / 2);
-            this.x = Math.max(arenaX + 20 * gameScale, Math.min(arenaX + arenaWidth - this.w - 20 * gameScale, this.x));
-        } else if (type === 'spike-wall') {
-            // Horizontal spike bar across partial width
-            const gapW = (220 - d * 80) * gameScale;
-            this.gapX = arenaX + (Math.random() * (arenaWidth - gapW));
-            this.gapX = Math.max(arenaX + 10 * gameScale, Math.min(arenaX + arenaWidth - gapW - 10 * gameScale, this.gapX));
-            this.gapW = gapW;
-            this.h = 20 * gameScale;
-        } else if (type === 'moving-block') {
-            this.w = (60 + Math.random() * 40) * gameScale;
-            this.h = 25 * gameScale;
-            this.moveRange = (100 + Math.random() * 120) * gameScale;
-            this.baseX = arenaX + arenaWidth / 2;
-            this.phase = Math.random() * Math.PI * 2;
-            this.moveSpd = 0.03 + d * 0.03;
-        }
-    }
-    update() {
-        if (this.type === 'moving-block') {
-            this.phase += this.moveSpd;
-            this.x = this.baseX + Math.sin(this.phase) * this.moveRange - this.w / 2;
-            this.x = Math.max(arenaX + 10 * gameScale, Math.min(arenaX + arenaWidth - this.w - 10 * gameScale, this.x));
-        }
-    }
-    getScreenY(camY) { return this.worldY - camY + arenaY + arenaHeight; }
-    draw(camY) {
-        const sy = this.getScreenY(camY);
-        if (sy < arenaY - 100 * gameScale || sy > arenaY + arenaHeight + 100 * gameScale) return;
-        ctx.save();
-        if (this.type === 'platform') {
-            ctx.fillStyle = '#1a2e3a';
-            ctx.fillRect(this.x, sy, this.w, this.h);
-            ctx.strokeStyle = '#4fc3f7'; ctx.lineWidth = 2 * gameScale;
-            ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = '#4fc3f7';
-            ctx.strokeRect(this.x, sy, this.w, this.h);
-            ctx.shadowBlur = 0;
-        } else if (this.type === 'spike-wall') {
-            // Left block
-            const lw = this.gapX - arenaX;
-            const rw = (arenaX + arenaWidth) - (this.gapX + this.gapW);
-            ctx.fillStyle = '#2d1b1b';
-            if (lw > 0) ctx.fillRect(arenaX, sy, lw, this.h);
-            if (rw > 0) ctx.fillRect(this.gapX + this.gapW, sy, rw, this.h);
-            ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 2 * gameScale;
-            ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = '#ff5252';
-            if (lw > 0) ctx.strokeRect(arenaX, sy, lw, this.h);
-            if (rw > 0) ctx.strokeRect(this.gapX + this.gapW, sy, rw, this.h);
-            ctx.shadowBlur = 0;
-        } else if (this.type === 'moving-block') {
-            ctx.fillStyle = '#2d1a2e';
-            ctx.fillRect(this.x, sy, this.w, this.h);
-            ctx.strokeStyle = '#ce93d8'; ctx.lineWidth = 2 * gameScale;
-            ctx.shadowBlur = 10 * gameScale; ctx.shadowColor = '#ce93d8';
-            ctx.strokeRect(this.x, sy, this.w, this.h);
-            ctx.shadowBlur = 0;
-        }
-        ctx.restore();
-    }
-    checkCollision(p) {
-        const r = p.radius * 0.88;
-        const sy = this.getScreenY(riseCamY);
-        if (this.type === 'platform') {
-            // Only collide from above (player falling onto it)
-            const wasAbove = (p.pos.y + r - p.vel.y) < sy;
-            if (wasAbove && p.pos.y + r > sy && p.pos.y - r < sy + this.h &&
-                p.pos.x + r > this.x && p.pos.x - r < this.x + this.w) {
-                p.pos.y = sy - r;
-                if (p.vel.y > 0) p.vel.y = 0;
-                p.isTouchingGround = true; p.isTouchingWall = true;
-                p.jumps = 1; p.hasJump = true;
-                return false;
-            }
-        } else if (this.type === 'spike-wall') {
-            const lw = this.gapX - arenaX;
-            const rw = (arenaX + arenaWidth) - (this.gapX + this.gapW);
-            const inY = p.pos.y + r > sy && p.pos.y - r < sy + this.h;
-            if (inY) {
-                if (lw > 0 && p.pos.x - r < arenaX + lw && p.pos.x + r > arenaX) return true;
-                if (rw > 0 && p.pos.x + r > this.gapX + this.gapW && p.pos.x - r < arenaX + arenaWidth) return true;
-            }
-        } else if (this.type === 'moving-block') {
-            if (p.pos.x + r > this.x && p.pos.x - r < this.x + this.w &&
-                p.pos.y + r > sy && p.pos.y - r < sy + this.h) return true;
-        }
-        return false;
-    }
-}
-
 class Particle {
     constructor(x, y, color, vel, type = 'circle') { this.pos = new Vector2D(x, y); this.vel = vel; this.life = 1.0; this.color = color; this.type = type; }
     update(ts) { this.pos.x += this.vel.x * ts; this.pos.y += this.vel.y * ts; this.life -= 0.035 * ts; }
@@ -915,12 +779,12 @@ function startCountdown() { countdown = 180; countdownMsgEl.style.display = 'blo
 
 // ─── Leaderboard ──────────────────────────────────────────────────────────────
 async function submitScore(s, cat) { try { await fetch('/api/leaderboard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: playerName || 'Pilot', score: s, category: cat }) }); fetchLeaderboard(); } catch(e) {} }
-async function fetchLeaderboard() { try { const r = await fetch('/api/leaderboard'); globalLeaderboard = await r.json(); if (Array.isArray(globalLeaderboard)) globalLeaderboard = { dribble: globalLeaderboard, trials: [], rise: [] }; if (!globalLeaderboard.rise) globalLeaderboard.rise = []; updateLeaderboardUI(); } catch(e) {} }
+async function fetchLeaderboard() { try { const r = await fetch('/api/leaderboard'); globalLeaderboard = await r.json(); if (Array.isArray(globalLeaderboard)) globalLeaderboard = { dribble: globalLeaderboard, trials: [] }; updateLeaderboardUI(); } catch(e) {} }
 function getGlobalBest() { return (globalLeaderboard.dribble || []).length > 0 ? globalLeaderboard.dribble[0].score : 0; }
 function updateLeaderboardUI(full = false) {
     const list = document.getElementById(full ? 'full-leaderboard-list' : 'leaderboard-list');
     const board = (globalLeaderboard[leaderboardType] || []);
-    const unit = (leaderboardType === 'trials' || leaderboardType === 'rise') ? 'm' : 's';
+    const unit = (leaderboardType === 'trials') ? 'm' : 's';
     list.innerHTML = board.slice(0, full ? 50 : 5).map((e, i) => `<div class="leaderboard-entry"><span>${i+1}. ${e.name}</span><span style="color:#fff">${e.score.toFixed(2)}${unit}</span></div>`).join('') || '<div style="text-align:center;color:#444;padding:20px">No records yet</div>';
 }
 
@@ -971,265 +835,6 @@ function endTrials() {
     if (metres > 0) submitScore(metres, 'trials');
     particles.length = 0; effects.length = 0;
     resetPositions();
-}
-
-// ─── Rise Mode ────────────────────────────────────────────────────────────────
-function startRise() {
-    gameState = 'rise'; riseActive = true;
-    resetPositions();
-    riseHeight = 0; riseMaxHeight = 0; riseCamY = 0;
-    riseObstacles = []; riseNextObsHeight = 500;
-    riseDeathFloorY = 0; // floor starts at the very bottom and rises over time
-    riseRecordHeight = (globalLeaderboard.rise || []).length > 0 ? globalLeaderboard.rise[0].score : 0;
-
-    // Position player at bottom center
-    const wallT = 5 * gameScale;
-    player1.pos.x = arenaX + arenaWidth / 2;
-    player1.pos.y = arenaY + arenaHeight - wallT - playerRadius;
-    player1.vel.x = 0; player1.vel.y = 0;
-    player1.jumps = 1; player1.hasJump = true; player1.boost = 112;
-
-    if (player1) {
-        player1.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost,
-            up2: 'ArrowUp', down2: 'ArrowDown', left2: 'ArrowLeft', right2: 'ArrowRight', jump2: 'Period', boost2: 'Comma' };
-    }
-
-    document.getElementById('rise-hud').style.display = 'block';
-    document.getElementById('rise-gameover').style.display = 'none';
-    document.getElementById('rise-record-tag').style.display = 'none';
-    document.getElementById('scoreboard').style.display = 'none';
-    document.getElementById('p1-controls').style.display = 'none';
-    document.getElementById('p2-controls').style.display = 'none';
-    document.getElementById('p1-join').style.display = 'none';
-    document.getElementById('p2-join').style.display = 'none';
-    particles.length = 0; effects.length = 0;
-}
-
-function endRise() {
-    gameState = 'arena'; riseActive = false;
-    const metres = Math.floor(riseMaxHeight / 60);
-    document.getElementById('rise-hud').style.display = 'none';
-    document.getElementById('scoreboard').style.display = 'block';
-    if (p1Joined) document.getElementById('p1-controls').style.display = 'block';
-    if (!p1Joined) document.getElementById('p1-join').style.display = 'block';
-    if (!p2Joined && !currentRoom) document.getElementById('p2-join').style.display = 'block';
-
-    document.getElementById('rise-go-height').innerText = metres;
-    const best = (globalLeaderboard.rise || []).length > 0 ? globalLeaderboard.rise[0].score : 0;
-    const bestEl = document.getElementById('rise-go-best');
-    if (metres > best) { bestEl.innerText = '🏆 NEW RECORD!'; bestEl.style.color = '#FFD700'; }
-    else if (best > 0) { bestEl.innerText = `Best: ${best}m`; bestEl.style.color = '#555'; }
-    else { bestEl.innerText = ''; }
-    document.getElementById('rise-gameover').style.display = 'block';
-    if (metres > 0) submitScore(metres, 'rise');
-    particles.length = 0; effects.length = 0;
-    resetPositions();
-}
-
-function updateRise(ts) {
-    const wallT = 5 * gameScale;
-
-    // Infinite boost
-    player1.boost = 112;
-    player1.handleInput(ts);
-
-    // Custom wall collision for rise — no top wall, left/right walls only, rounded bottom corners
-    const lx = arenaX + wallT, rx = arenaX + arenaWidth - wallT;
-    const screenFloorY = arenaY + arenaHeight - wallT; // the physical bottom floor (in screen coords)
-    const r = player1.radius;
-    const res = 0.6;
-    const cr = config.cornerRadius * gameScale;
-
-    // Apply gravity
-    player1.applyForce(new Vector2D(0, config.gravity * player1.mass * gameScale * RISE_GRAVITY_SCALE));
-    player1.vel.x += player1.acc.x * ts; player1.vel.y += player1.acc.y * ts;
-    player1.vel.mult(Math.pow(config.friction, ts));
-    player1.pos.x += player1.vel.x * ts; player1.pos.y += player1.vel.y * ts;
-    player1.acc.mult(0);
-    player1.isTouchingWall = false; player1.isTouchingGround = false;
-
-    // Left wall with rounded bottom corner
-    if (player1.pos.y > screenFloorY - cr * 1.2) {
-        // In bottom-left corner zone
-        if (player1.pos.x < lx + cr) {
-            const cx = lx + cr, cy = screenFloorY - cr;
-            const dx = player1.pos.x - cx, dy = player1.pos.y - cy;
-            const d = Math.sqrt(dx*dx + dy*dy);
-            if (d < cr + r && d > 0) {
-                const nx = dx/d, ny = dy/d;
-                player1.pos.x = cx + nx * (cr + r);
-                player1.pos.y = cy + ny * (cr + r);
-                const dot = player1.vel.x * nx + player1.vel.y * ny;
-                if (dot < 0) { player1.vel.x -= (1 + res) * dot * nx; player1.vel.y -= (1 + res) * dot * ny; }
-                player1.isTouchingWall = true;
-                if (ny < -0.3) { player1.isTouchingGround = true; player1.jumps = 1; player1.hasJump = true; }
-            }
-        }
-        // In bottom-right corner zone
-        if (player1.pos.x > rx - cr) {
-            const cx = rx - cr, cy = screenFloorY - cr;
-            const dx = player1.pos.x - cx, dy = player1.pos.y - cy;
-            const d = Math.sqrt(dx*dx + dy*dy);
-            if (d < cr + r && d > 0) {
-                const nx = dx/d, ny = dy/d;
-                player1.pos.x = cx + nx * (cr + r);
-                player1.pos.y = cy + ny * (cr + r);
-                const dot = player1.vel.x * nx + player1.vel.y * ny;
-                if (dot < 0) { player1.vel.x -= (1 + res) * dot * nx; player1.vel.y -= (1 + res) * dot * ny; }
-                player1.isTouchingWall = true;
-                if (ny < -0.3) { player1.isTouchingGround = true; player1.jumps = 1; player1.hasJump = true; }
-            }
-        }
-    }
-
-    // Left/right flat walls
-    if (player1.pos.x - r < lx) { player1.pos.x = lx + r; player1.vel.x = Math.abs(player1.vel.x) * res; player1.isTouchingWall = true; player1.jumps = 1; player1.hasJump = true; }
-    if (player1.pos.x + r > rx) { player1.pos.x = rx - r; player1.vel.x = -Math.abs(player1.vel.x) * res; player1.isTouchingWall = true; player1.jumps = 1; player1.hasJump = true; }
-
-    // Bottom floor (physical screen floor)
-    if (player1.pos.y + r > screenFloorY) {
-        player1.pos.y = screenFloorY - r;
-        player1.vel.y = -Math.abs(player1.vel.y) * res;
-        player1.isTouchingGround = true; player1.isTouchingWall = true;
-        player1.jumps = 1; player1.hasJump = true;
-    }
-
-    // Track height (in world units): how high above starting floor
-    const startFloorScreen = arenaY + arenaHeight - wallT - playerRadius;
-    const currentHeightPixels = startFloorScreen - player1.pos.y + riseCamY;
-    if (currentHeightPixels > riseMaxHeight) riseMaxHeight = currentHeightPixels;
-    riseHeight = Math.max(0, startFloorScreen - player1.pos.y + riseCamY);
-
-    // Camera: keep player at ~50% of screen height once they climb above center.
-    // targetCamY increases when player is in the top half, pulling obstacles down with them.
-    // Clamp to >= 0 (don't scroll before player rises) and never decrease (no backtrack).
-    const targetCamY = Math.max(riseCamY, Math.max(0, (arenaY + arenaHeight * 0.5) - player1.pos.y));
-    riseCamY += (targetCamY - riseCamY) * 0.09 * ts;
-
-    // Death floor: moves up with camera, lags behind slightly
-    // In screen space: death floor is at arenaY + arenaHeight - riseDeathFloorY + riseCamY
-    // It accelerates as you go higher
-    const deathSpeed = 0.3 + riseMaxHeight / (arenaHeight * 8);
-    riseDeathFloorY += deathSpeed * ts;
-
-    // Death floor screen Y
-    const deathFloorScreenY = arenaY + arenaHeight - riseDeathFloorY + riseCamY;
-
-    // Kill if player falls below death floor
-    if (player1.pos.y + r > deathFloorScreenY) {
-        endRise(); return;
-    }
-
-    // Spawn obstacles
-    if (riseHeight > riseNextObsHeight - arenaHeight / gameScale) {
-        const difficulty = Math.min(1, riseMaxHeight / (arenaHeight * 5));
-        const types = difficulty < 0.3 ? ['platform','platform','spike-wall'] :
-                      difficulty < 0.6 ? ['platform','spike-wall','moving-block'] :
-                                         ['spike-wall','moving-block','moving-block','spike-wall'];
-        const type = types[Math.floor(Math.random() * types.length)];
-        // Place obstacle above current view
-        const obsWorldY = -(riseCamY + arenaHeight * 0.15 + Math.random() * arenaHeight * 0.3);
-        riseObstacles.push(new RiseObstacle(obsWorldY, type, difficulty));
-        riseNextObsHeight += 300 + Math.random() * 400;
-    }
-
-    // Update and check obstacles
-    for (let i = riseObstacles.length - 1; i >= 0; i--) {
-        const o = riseObstacles[i];
-        o.update();
-        const hit = o.checkCollision(player1);
-        if (hit === true) { endRise(); return; }
-        // Remove obstacles far below
-        if (o.getScreenY(riseCamY) > arenaY + arenaHeight + 200 * gameScale) riseObstacles.splice(i, 1);
-    }
-
-    // Update HUD
-    const metres = Math.floor(riseMaxHeight / 60);
-    document.getElementById('rise-height').innerText = metres + 'm';
-    const recEl = document.getElementById('rise-record-tag');
-    if (metres > riseRecordHeight && metres > 0) { recEl.style.display = 'block'; }
-    else { recEl.style.display = 'none'; }
-}
-
-function drawRise() {
-    if (shakeTime > 0) { ctx.save(); ctx.translate((Math.random()-0.5)*8*gameScale, (Math.random()-0.5)*8*gameScale); shakeTime--; } else { ctx.save(); }
-
-    const wallT = 5 * gameScale;
-    const lx = arenaX + wallT, rx = arenaX + arenaWidth - wallT;
-    const cr = config.cornerRadius * gameScale;
-
-    // Scrolling grid background
-    const gridS = 100 * gameScale, yOff = riseCamY % gridS;
-    ctx.strokeStyle = 'rgba(255,100,100,0.04)'; ctx.lineWidth = 1;
-    for (let x = arenaX; x < arenaX + arenaWidth; x += gridS) { ctx.beginPath(); ctx.moveTo(x, arenaY); ctx.lineTo(x, arenaY + arenaHeight); ctx.stroke(); }
-    for (let y = arenaY - yOff; y < arenaY + arenaHeight + gridS; y += gridS) { ctx.beginPath(); ctx.moveTo(arenaX, y); ctx.lineTo(arenaX + arenaWidth, y); ctx.stroke(); }
-
-    // Draw arena walls (left, right, bottom with rounded corners) — NO TOP WALL
-    ctx.strokeStyle = '#555'; ctx.lineWidth = 10 * gameScale; ctx.lineCap = 'round';
-    ctx.beginPath();
-    // Left wall top → bottom-left corner arc → bottom → bottom-right corner arc → right wall top
-    ctx.moveTo(lx, arenaY - 20 * gameScale); // left wall going up past visible area
-    ctx.lineTo(lx, arenaY + arenaHeight - wallT - cr);
-    ctx.arcTo(lx, arenaY + arenaHeight - wallT, lx + cr, arenaY + arenaHeight - wallT, cr);
-    ctx.lineTo(rx - cr, arenaY + arenaHeight - wallT);
-    ctx.arcTo(rx, arenaY + arenaHeight - wallT, rx, arenaY + arenaHeight - wallT - cr, cr);
-    ctx.lineTo(rx, arenaY - 20 * gameScale);
-    ctx.stroke();
-
-    // Death floor — glowing red
-    const deathFloorScreenY = arenaY + arenaHeight - riseDeathFloorY + riseCamY;
-    if (deathFloorScreenY < arenaY + arenaHeight + 5) {
-        const dfAlpha = Math.min(1, (arenaY + arenaHeight - deathFloorScreenY + 60 * gameScale) / (200 * gameScale));
-        // Glow
-        ctx.save();
-        const grad = ctx.createLinearGradient(0, deathFloorScreenY, 0, deathFloorScreenY + 80 * gameScale);
-        grad.addColorStop(0, `rgba(255,50,50,${dfAlpha * 0.5})`);
-        grad.addColorStop(1, 'rgba(255,0,0,0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(arenaX, deathFloorScreenY, arenaWidth, 80 * gameScale);
-        ctx.strokeStyle = `rgba(255,80,80,${dfAlpha})`; ctx.lineWidth = 3 * gameScale;
-        ctx.shadowBlur = 20 * gameScale; ctx.shadowColor = '#ff4444';
-        ctx.beginPath(); ctx.moveTo(arenaX, deathFloorScreenY); ctx.lineTo(arenaX + arenaWidth, deathFloorScreenY); ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.restore();
-    }
-
-    // Record line — shown on the wall when current height > 0
-    if (riseRecordHeight > 0) {
-        const recScreenY = arenaY + arenaHeight - wallT - playerRadius - (riseRecordHeight * 60) + riseCamY;
-        if (recScreenY > arenaY - 20 && recScreenY < arenaY + arenaHeight) {
-            ctx.save();
-            ctx.strokeStyle = 'rgba(255,215,0,0.6)'; ctx.lineWidth = 2 * gameScale;
-            ctx.setLineDash([8 * gameScale, 6 * gameScale]);
-            ctx.beginPath(); ctx.moveTo(arenaX + 5 * gameScale, recScreenY); ctx.lineTo(arenaX + arenaWidth - 5 * gameScale, recScreenY); ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.fillStyle = 'rgba(255,215,0,0.8)'; ctx.font = `bold ${10 * gameScale}px Arial`;
-            ctx.fillText('🏆 ' + riseRecordHeight + 'm', arenaX + 8 * gameScale, recScreenY - 4 * gameScale);
-            ctx.restore();
-        }
-    }
-
-    // Live record line: show where player height is relative to record, on the wall
-    const curMetres = Math.floor(riseMaxHeight / 60);
-    if (curMetres > 0 && curMetres >= riseRecordHeight) {
-        // Show gold line at player's current height on left wall
-        const liveY = player1.pos.y;
-        ctx.save();
-        ctx.fillStyle = '#FFD700'; ctx.font = `bold ${11 * gameScale}px Arial`;
-        ctx.fillText('▶ ' + curMetres + 'm', arenaX + 12 * gameScale, liveY);
-        ctx.restore();
-    }
-
-    // Draw obstacles
-    riseObstacles.forEach(o => o.draw(riseCamY));
-
-    // Draw player
-    player1.draw();
-
-    // Particles
-    particles.forEach(p => p.draw()); effects.forEach(e => e.draw());
-
-    ctx.restore();
 }
 
 // ─── Multiplayer ──────────────────────────────────────────────────────────────
@@ -1461,9 +1066,8 @@ document.getElementById('reset-keybinds-btn').onclick = () => { keybinds = {...D
 
 // ─── Leaderboard UI ───────────────────────────────────────────────────────────
 document.getElementById('leaderboard-toggle').onclick = () => { const p = document.getElementById('leaderboard-panel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; if (p.style.display === 'block') { document.getElementById('settings-panel').style.display = 'none'; document.getElementById('multiplayer-panel').style.display = 'none'; fetchLeaderboard(); } };
-document.getElementById('tab-dribble').onclick = () => { leaderboardType = 'dribble'; document.getElementById('tab-dribble').style.color = '#fff'; document.getElementById('tab-trials').style.color = '#555'; document.getElementById('tab-rise').style.color = '#555'; updateLeaderboardUI(); };
-document.getElementById('tab-trials').onclick = () => { leaderboardType = 'trials'; document.getElementById('tab-trials').style.color = '#fff'; document.getElementById('tab-dribble').style.color = '#555'; document.getElementById('tab-rise').style.color = '#555'; updateLeaderboardUI(); };
-document.getElementById('tab-rise').onclick = () => { leaderboardType = 'rise'; document.getElementById('tab-rise').style.color = '#ff6b6b'; document.getElementById('tab-dribble').style.color = '#555'; document.getElementById('tab-trials').style.color = '#555'; updateLeaderboardUI(); };
+document.getElementById('tab-dribble').onclick = () => { leaderboardType = 'dribble'; document.getElementById('tab-dribble').style.color = '#fff'; document.getElementById('tab-trials').style.color = '#555'; updateLeaderboardUI(); };
+document.getElementById('tab-trials').onclick = () => { leaderboardType = 'trials'; document.getElementById('tab-trials').style.color = '#fff'; document.getElementById('tab-dribble').style.color = '#555'; updateLeaderboardUI(); };
 document.getElementById('save-name-btn').onclick = () => { playerName = document.getElementById('leaderboard-name-input').value.trim(); if (playerName) { localStorage.setItem('aeroPlayerName', playerName); document.getElementById('leaderboard-name-input').value = ''; } };
 document.getElementById('see-all-btn').onclick = () => { document.getElementById('full-leaderboard-overlay').style.display = 'flex'; updateLeaderboardUI(true); };
 document.getElementById('close-full-leaderboard').onclick = () => document.getElementById('full-leaderboard-overlay').style.display = 'none';
@@ -1475,18 +1079,10 @@ document.getElementById('cancel-trials-btn').onclick = () => { document.getEleme
 document.getElementById('retry-trials-btn').onclick = () => { trialsGameover.style.display = 'none'; startTrials(); };
 document.getElementById('exit-trials-btn').onclick = () => { trialsGameover.style.display = 'none'; document.getElementById('scoreboard').style.display = 'block'; };
 
-// ─── Rise UI ─────────────────────────────────────────────────────────────────
-document.getElementById('rise-toggle').onclick = () => { document.getElementById('rise-menu').style.display = 'block'; };
-document.getElementById('begin-rise-btn').onclick = () => { document.getElementById('rise-menu').style.display = 'none'; startRise(); };
-document.getElementById('cancel-rise-btn').onclick = () => { document.getElementById('rise-menu').style.display = 'none'; };
-document.getElementById('retry-rise-btn').onclick = () => { document.getElementById('rise-gameover').style.display = 'none'; startRise(); };
-document.getElementById('exit-rise-btn').onclick = () => { document.getElementById('rise-gameover').style.display = 'none'; document.getElementById('scoreboard').style.display = 'block'; resetPositions(); };
-
 // ─── Update ───────────────────────────────────────────────────────────────────
 function update(dt = 1) {
     const ts = dt;
 
-    if (gameState === 'rise') { updateRise(ts); return; }
     if (gameState === 'trials') {
         // Speed ramps up every 8 seconds, capped at TRIAL_MAX_SPEED
         trialAccel += dt; if (trialAccel > 8 * 60) { trialSpeed = Math.min(TRIAL_MAX_SPEED, trialSpeed + 0.6); trialAccel = 0; }
@@ -1588,7 +1184,6 @@ function update(dt = 1) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (flashTime > 0) { ctx.fillStyle = flashColor; ctx.fillRect(0, 0, canvas.width, canvas.height); flashTime--; }
-    if (gameState === 'rise') { drawRise(); return; }
     ctx.save();
     if (shakeTime > 0) { ctx.translate((Math.random()-0.5)*10*gameScale, (Math.random()-0.5)*10*gameScale); shakeTime--; }
     if (gameState === 'trials') {
