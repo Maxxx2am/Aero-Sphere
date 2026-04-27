@@ -306,6 +306,7 @@ class Entity {
         this.applyForce(new Vector2D(0, config.gravity * this.mass * gameScale));
         this.vel.x += this.acc.x * ts; this.vel.y += this.acc.y * ts;
         this.vel.mult(Math.pow(config.friction, ts));
+        this.prevPos = new Vector2D(this.pos.x, this.pos.y);
         this.pos.x += this.vel.x * ts; this.pos.y += this.vel.y * ts;
         this.acc.mult(0); this.isTouchingWall = false; this.isTouchingGround = false;
     }
@@ -530,7 +531,11 @@ class TrialObstacle {
     checkCollision(p) {
         const r = p.radius * 0.85; // slightly more forgiving hitbox
         if (this.type === 'ring') {
-            if (p.pos.x + r > this.x && p.pos.x - r < this.x + this.w) {
+            // Sweep X between previous and current position to prevent tunneling at high speed
+            const prevX = p.prevPos ? p.prevPos.x : p.pos.x;
+            const minX = Math.min(prevX, p.pos.x) - r;
+            const maxX = Math.max(prevX, p.pos.x) + r;
+            if (maxX > this.x && minX < this.x + this.w) {
                 const inGap = p.pos.y - r > this.gapY && p.pos.y + r < this.gapY + this.gapS;
                 if (!inGap) {
                     const backX = p.pos.x + Math.cos(p.currentAngle + Math.PI) * p.radius;
@@ -554,11 +559,12 @@ class TrialObstacle {
             const gh = this.gapHalf || this.gapS / 2;
             const topH = this.centerY - gh - arenaY;
             const botY = this.centerY + gh;
+            const botH = arenaY + arenaHeight - botY;
             // Top block
             if (topH > 0 && p.pos.x + r > this.x && p.pos.x - r < this.x + this.w &&
                 p.pos.y - r < arenaY + topH && p.pos.y + r > arenaY) return 'hit';
             // Bottom block
-            if (p.pos.x + r > this.x && p.pos.x - r < this.x + this.w &&
+            if (botH > 0 && p.pos.x + r > this.x && p.pos.x - r < this.x + this.w &&
                 p.pos.y + r > botY && p.pos.y - r < arenaY + arenaHeight) return 'hit';
         } else if (this.type === 'laser') {
             if (!this.isOpen) {
