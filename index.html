@@ -138,7 +138,7 @@
     <div class="setting-row"><label>Sensitivity</label><input type="range" id="slider-sens" min="0.05" max="0.5" step="0.01" value="0.2"></div>
     <div class="setting-row"><label>Boost Power</label><input type="range" id="slider-boost" min="0.1" max="0.5" step="0.01" value="0.22"></div>
     <div class="setting-row"><label>Gravity</label><input type="range" id="slider-weight" min="0.01" max="0.2" step="0.01" value="0.07"></div>
-    <div class="setting-row"><label>Damping</label><input type="range" id="slider-friction" min="0.95" max="0.999" step="0.001" value="0.982"></div>
+    <div class="setting-row"><label>Damping</label><input type="range" id="slider-friction" min="0.95" max="0.999" step="0.001" value="0.995"></div>
     <button id="keybind-btn" style="width: 100%; background: #222; color: #fff; border: 1px solid #444; padding: 10px; cursor: pointer; font-size: 10px; font-weight: bold; margin-top: 10px; letter-spacing: 1px;">KEY BINDINGS</button>
     <button id="how-to-play-btn" style="width: 100%; background: #333; color: #fff; border: 1px solid #444; padding: 10px; cursor: pointer; font-size: 10px; font-weight: bold; margin-top: 8px;">HOW TO PLAY</button>
 </div>
@@ -173,7 +173,7 @@ const goDistBig = document.getElementById('go-dist-big'), goBestLine = document.
 const multiStatus = document.getElementById('multi-status'), roomInput = document.getElementById('room-input');
 
 const config = {
-    gravity: 0.07, friction: 0.982, restitution: 1.15, rotationSensitivity: 0.2,
+    gravity: 0.04, friction: 0.995, restitution: 1.15, rotationSensitivity: 0.2,
     boostPower: 0.22, enginePower: 0.18, baseBallRadius: 27, basePlayerRadius: 20,
     targetRatio: 1.8, goalWidth: 150, goalHeight: 350, cornerRadius: 100,
     colors: { blue: '#0074D9', orange: '#FF851B', ball: '#FFFFFF', border: '#555555', bg: '#020202' }
