@@ -184,6 +184,7 @@ let gameScale = 1.0, ballRadius, playerRadius, settingsModified = false;
 let width, height, arenaWidth, arenaHeight, arenaX, arenaY;
 let scoreBlue = 0, scoreOrange = 0, shakeTime = 0, timeScale = 1.0, flashTime = 0, flashColor = '';
 let resetDelay = 0, countdown = 0, goTimer = 0;
+let goalSpeed = 0; // KPH speed of ball frozen at goal moment
 const particles = [], effects = [], localKeys = {}, remoteKeys = {};
 const keys = new Proxy(localKeys, {
     get: (t, p) => t[p] || remoteKeys[p],
@@ -769,8 +770,16 @@ function resolveCollision(a, b) {
 }
 
 // ─── Scoring ──────────────────────────────────────────────────────────────────
+function ballSpeedKPH() {
+    if (!ball) return 0;
+    const px_per_frame = Math.sqrt(ball.vel.x ** 2 + ball.vel.y ** 2);
+    // Arena = 105m real pitch width; 60fps
+    return px_per_frame * 60 * (105 / arenaWidth) * 3.6;
+}
+
 function scoreGoal(team) {
     if (resetDelay > 0 || countdown > 0) return;
+    goalSpeed = ballSpeedKPH();
     if (team === 'blue') scoreBlue++; else scoreOrange++;
     scoreBlueEl.innerText = scoreBlue; scoreOrangeEl.innerText = scoreOrange;
     shakeTime = 30; flashTime = 25;
@@ -1141,7 +1150,7 @@ function update(dt = 1) {
         // Timer control (host or offline only)
         if (isHost || !currentRoom) {
             if (resetDelay > 0) { resetDelay -= ts; if (resetDelay <= 0) {
-                timeScale = 1.0; goalMsgEl.style.opacity = 0; resetPositions();
+                timeScale = 1.0; goalMsgEl.style.opacity = 0; goalSpeed = 0; resetPositions();
                 // Re-apply multiplayer control overrides after reset
                 if (currentRoom && isHost && player1) player1.controls = { up: keybinds.p1up, down: keybinds.p1down, left: keybinds.p1left, right: keybinds.p1right, jump: keybinds.p1jump, boost: keybinds.p1boost };
                 startCountdown();
@@ -1253,6 +1262,38 @@ function draw() {
             if (player2.jumps > 0) { ctx.beginPath(); ctx.arc(canvas.width - 46*gameScale, canvas.height-235*gameScale, 8*gameScale, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.shadowBlur = 10*gameScale; ctx.shadowColor = config.colors.orange; ctx.fill(); ctx.shadowBlur = 0; }
         }
     }
+    // ── Ball speed display ───────────────────────────────────────────────────
+    if (gameState === 'arena' && ball) {
+        const displaySpeed = goalSpeed > 0 ? goalSpeed : ballSpeedKPH();
+        const speedTxt = Math.round(displaySpeed) + ' KPH';
+        const isGoalFreeze = goalSpeed > 0;
+        ctx.save();
+        ctx.textAlign = 'center';
+        if (isGoalFreeze) {
+            // Big frozen speed centered below GOAL!
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2 + 68 * gameScale;
+            ctx.font = `bold ${Math.round(28 * gameScale)}px 'Courier New', monospace`;
+            ctx.shadowBlur = 20 * gameScale;
+            ctx.shadowColor = flashColor.replace(/[\d.]+\)$/, '0.9)');
+            ctx.fillStyle = '#fff';
+            ctx.fillText(speedTxt, cx, cy);
+            ctx.font = `${Math.round(11 * gameScale)}px 'Courier New', monospace`;
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.fillText('GOAL SPEED', cx, cy + 20 * gameScale);
+        } else {
+            // Live readout floating above the ball
+            ctx.font = `bold ${Math.round(13 * gameScale)}px 'Courier New', monospace`;
+            ctx.shadowBlur = 6 * gameScale;
+            ctx.shadowColor = 'rgba(255,255,255,0.5)';
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.fillText(speedTxt, ball.pos.x, ball.pos.y - ball.radius - 10 * gameScale);
+            ctx.shadowBlur = 0;
+        }
+        ctx.restore();
+    }
+
     ctx.restore();
 }
 
