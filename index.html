@@ -387,7 +387,7 @@ class Ball extends Entity {
     update(ts) {
         this.applyForce(new Vector2D(0, config.gravity * this.mass * gameScale));
         this.vel.x += this.acc.x * ts; this.vel.y += this.acc.y * ts;
-        this.vel.mult(Math.pow(0.998, ts)); // much less air drag than players
+        this.vel.mult(Math.pow(0.991, ts)); // slightly less air drag than players
         this.prevPos = new Vector2D(this.pos.x, this.pos.y);
         this.pos.x += this.vel.x * ts; this.pos.y += this.vel.y * ts;
         this.acc.mult(0); this.isTouchingWall = false; this.isTouchingGround = false;
