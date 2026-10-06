@@ -24,6 +24,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
+// Serve the game entry point explicitly on Vercel.
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Global Leaderboard - Persistent storage
 let leaderboards = { dribble: [], trials: [] };
 
